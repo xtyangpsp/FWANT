@@ -1,0 +1,17 @@
+/apps/spack/bell/apps/openmpi/3.1.4-intel-19.0.5-ndc76hl/bin/mpif90  -o bin/seis3d_grid ./OBJ/mod_constants.o ./OBJ/mod_math.o ./OBJ/mod_string.o ./OBJ/mod_nfseis.o ./OBJ/mod_para.o ./OBJ/mod_mpi.o ./OBJ/mod_grid.o ./OBJ/mod_io.o ./OBJ/mod_media.o ./OBJ/mod_macdrp.o ./OBJ/mod_src.o ./OBJ/mod_custom.o ./OBJ/seis3d_grid.o -L/apps/spack/bell/apps/openmpi/3.1.4-intel-19.0.5-ndc76hl/lib -lnetcdff -lnetcdf -L/apps/spack/bell/apps/netcdf-fortran/4.5.3-intel-19.0.5-75zjiqj/lib -lnetcdf -Bstatic -static 
+/usr/bin/uuidgen: /apps/spack/bell/apps/anaconda/2020.02-py37-gcc-4.8.5-u747gsx/lib/libuuid.so.1: no version information available (required by /usr/bin/uuidgen)
+/usr/bin/ld: cannot find -lhwloc
+/usr/bin/ld: cannot find -lpmi
+/usr/bin/ld: cannot find -lpmi2
+/usr/bin/ld: cannot find -lrt
+/usr/bin/ld: cannot find -lucp
+/usr/bin/ld: cannot find -luct
+/usr/bin/ld: cannot find -lucm
+/usr/bin/ld: cannot find -lucs
+/usr/bin/ld: cannot find -lutil
+/usr/bin/ld: cannot find -lm
+/usr/bin/ld: cannot find -lc
+/usr/bin/ld: cannot find -ldl
+/usr/bin/ld: cannot find -lc
+/usr/bin/sha1sum: bin/seis3d_grid: No such file or directory
+make: *** [bin/seis3d_grid] Error 1

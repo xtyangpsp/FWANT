@@ -1,0 +1,27 @@
+
+COMPILER := Intel
+
+#######################################################################
+#                        Intel compiler                               #
+#######################################################################
+ifeq "$(COMPILER)" "Intel"
+FC     :=  /share/pkg/mpich-intel/3.0.4/bin/mpif90
+NETCDF :=  /share/pkg/netcdf-intel/4.3.0
+
+LDFLAGS := -L/share/pkg/mpich-intel/3.0.4/lib -lnetcdff -lnetcdf -L$(NETCDF)/lib -lnetcdf $(if $(STATIC),-Bstatic -static,) 
+FFLAGS := -D_GNU_SOURCE -c -zero -module $(OBJDIR) -I$(NETCDF)/include \
+          $(if $(WithOMP),-openmp -openmp_report2,)
+FFLAGSMP := -mp1 -unroll0 -ip-no-inlining $(FFLAGS)
+
+ifeq "$(DEBUG)" "ON"
+  FFLAGS   := $(if $(WithOMP),-O0,-g -debug extended -traceback -fp) $(FFLAGS)
+  FFLAGSMP := $(if $(WithOMP),-O0,-g -debug extended -traceback -fp) $(FFLAGSMP)
+else
+
+FFLAGS   := -O3 -ftz -align records -no-prec-div -unroll1 -Wl,-rpath -Wl,LIBDIR -D_GNU_SOURCE $(FFLAGS)
+FFLAGSMP := -O3 $(FFLAGSMP)
+LDFLAGS  := $(LDFLAGS)
+endif #DEBUG
+
+endif #Intel
+

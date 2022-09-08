@@ -1,0 +1,2 @@
+ rsync -avz config pubell:projects/FD3Dspher/run/FaultFold/sim_0.025deg_v1/
+ rsync -avz pubell:projects/FD3Dspher/run/FaultFold/sim_0.025deg_v1/input .
