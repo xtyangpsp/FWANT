@@ -1,2 +1,2 @@
-# FWANT_clean
-Codes and docs for FWANT, after cleaning the debris and unused codes
+# FWANT
+Full-wave ambient noise tomography codes, originally from Yang Shen @ URI and Haiying Gao @ UMASS
