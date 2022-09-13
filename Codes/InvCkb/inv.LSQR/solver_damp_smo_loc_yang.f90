@@ -53,11 +53,12 @@ real(SP),dimension(3) :: ker0
 !integer,parameter :: INT_KIND = SELECTED_INT_KIND(15) !has the largest value of
 !R in selected_int_kind(R).
 integer(I8B) :: imultis
-integer :: num_cmp,nsta,nevt,nloc
+integer(I8B) :: num_cmp,nsta,nevt,nloc
 integer(I8B) :: nrow_smoth,nbd_smoth,nel_smoth
 integer(I8B) ::                                     &
-  num_blk,num_dat,num_mval,num_xval,num_siz1d, &
+  num_dat,num_mval,num_xval,num_siz1d, &
   num_sta,num_evt,num_loc,num_row,num_bd
+integer::num_blk
 integer(I8B)::num_nel
 integer,allocatable :: idsta(:),idevt(:),idloc(:)
 real(DP),allocatable :: wgloc(:)
@@ -323,7 +324,7 @@ contains
 !----------------------------------------------------------
 
 subroutine alloc_var(nst,nev,nlo,nx,nbd)
-  integer :: nst,nev,nlo
+  integer(I8B) :: nst,nev,nlo
   integer(I8B) :: nx,nbd
   if (nst>0) then
      allocate(idsta(nst)); idsta=0.0
@@ -347,7 +348,7 @@ end subroutine alloc_var
 
 subroutine init_smoothing(filenm,ncmp,max_row,max_bd,max_nel)
 character (len=*),intent(in) :: filenm
-integer,intent(in) :: ncmp
+integer(I8B),intent(in) :: ncmp
 integer(I8B),intent(out) :: max_row,max_bd,max_nel
 integer :: fid,nblk,ierr
 
@@ -366,11 +367,10 @@ subroutine init_data_damp(filenm,ncmp,nst,nev,nlo,  &
     max_dat,max_st,max_ev,max_lo,max_mval,max_xval, &
     max_siz,max_row,max_bd,max_nel)
 character (len=*),intent(in) :: filenm
-integer,intent(in) :: ncmp,nst,nev,nlo
+integer(I8B),intent(in) :: ncmp,nst,nev,nlo
 integer(I8B),intent(out) ::                     &
   max_dat,max_st,max_ev,max_lo,max_mval,max_xval, &
-  max_siz,max_row,max_bd !,max_nel
-integer(I8B),intent(out)::max_nel
+  max_siz,max_row,max_bd,max_nel
 character (len=132) :: fnm_k
 integer :: idst(nst),idev(nev),idlo(nlo)
 real    :: weig(nlo)
@@ -462,6 +462,7 @@ max_nel=max_nel+(nst+nev+nlo)*max_dat +max_xval
 max_row=max_dat+max_xval
 max_bd=max_bd+nst+nev+nlo
 max_siz=max(max_xval,max_row)
+write(*,*) 'finished init_data_damp'
 end subroutine init_data_damp
 
 !----------------------------------------------------------
@@ -499,13 +500,13 @@ do
      open(gid,file=trim(fnm_G),status='old',iostat=ierr,form='unformatted')
      if (ierr>0) call error_except("open kernel err:"//trim(fnm_G))
      !debug
-     write(*,*) 'test 1:',trim(fnm_G)
+     !write(*,*) 'test 1:',trim(fnm_G)
      read(gid) nblk,ker0
-     write(*,*) 'test 2:',nblk,ker0
+     !write(*,*) 'test 2:',nblk,ker0
      read(gid) ncoef
-     write(*,*) 'test 3:',ncoef
+     !write(*,*) 'test 3:',ncoef
      read(gid) (indx0(nael+i),coef_sp(nael+i),i=1,ncoef)
-     write(*,*) 'test 4:'
+     !write(*,*) 'test 4:'
      close(gid)
 
      do i=1,ncoef

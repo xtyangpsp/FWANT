@@ -16,8 +16,11 @@ module LSQR_mod
 !     ra = coefficient matrix values
 !     ja = column indices
 !     na = array of number of active elements per row
+use, intrinsic :: iso_fortran_env, only : I1B => int8,&
+         I2B => int16, I4B => int32,  I8B => int64
 
 implicit none
+
 private
 
 public ::       &
@@ -29,12 +32,13 @@ public ::       &
   lsqr_check,   &
   error_except
 
+!integer,parameter,public :: INT_DP = SELECTED_INT_KIND(15)
 integer,parameter,public :: DP = KIND(1.0D0)
 integer,parameter,public :: SP = KIND(1.0)
 real(DP),parameter,public :: CONS_EQ=1.0e-20_DP
 
-integer :: ncol,max_row,max_nel
-integer :: mrow,nel
+integer(I8B) :: ncol,max_row,max_nel
+integer(I8B) :: mrow,nel
 real(DP) :: res2
 
 integer,allocatable :: ja(:),na(:)
@@ -47,7 +51,7 @@ contains
 
 ! ... initialize for conjugate gradient least squares
 subroutine lsqr_init(m,n,siz,num)
-  integer,intent(in) :: m,n,siz,num
+  integer(I8B),intent(in) :: m,n,siz,num
   integer :: ierr
 
   mrow=0; ncol=n; nel=0
@@ -107,7 +111,8 @@ end subroutine lsqr_destroy
 ! ... add one equation of data into row of matrix
 !     for conjugate gradient method (slsqr) of solution
 subroutine lldrow(coef,idx,ncoef,rhs)
-integer,intent(in) :: ncoef,idx(:)
+integer,intent(in) :: ncoef
+integer,intent(in) :: idx(:)
 real(DP),intent(in) :: coef(:),rhs
 integer :: i
 
@@ -276,12 +281,12 @@ subroutine lgtsol(solvec,serr,nvar)
 !       solvec = solution vector
 !       serr = standard error estimates
   real(DP) :: solvec(:),serr(:)
-  integer :: nvar
+  integer(I8B) :: nvar, itemp=1
 
   real(DP) :: temp
   integer :: i
 
-  temp = res2/dble(max0(mrow-nvar,1))
+  temp = res2/dble(max0(mrow-nvar,itemp))
   do i=1,nvar
      solvec(i) = x(i)
      serr(i) = dsqrt(temp*sig(i))
@@ -291,7 +296,7 @@ end subroutine lgtsol
 ! ... normalize the vector 'vect' to unit magnitude and
 !     return the scale factor in 'v0'
 subroutine lnrliz(v0,vect,n)
-integer,intent(in) :: n
+integer(I8B),intent(in) :: n
 real(DP) :: v0,vect(:)
 
 integer :: i
@@ -330,7 +335,7 @@ subroutine lupdat(a,b,flag,scal,n)
 !     character flag indicates addition or subtraction
   real(DP),intent(inout) :: a(:)
   real(DP),intent(in) :: b(:),scal
-  integer,intent(in) :: n
+  integer(I8B),intent(in) :: n
   character (len=*) :: flag
 
   integer :: i
@@ -346,7 +351,7 @@ subroutine lupdat(a,b,flag,scal,n)
 end subroutine lupdat
 
 function dotp(a,b,n) result(cov2)
-  integer,intent(in) :: n
+  integer(I8B),intent(in) :: n
   real(DP),intent(in) :: a(:),b(:)
   real(DP) :: cov2
 
