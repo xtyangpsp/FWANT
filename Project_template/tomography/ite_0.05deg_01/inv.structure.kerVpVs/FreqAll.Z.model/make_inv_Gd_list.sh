@@ -1,30 +1,24 @@
 #!/bin/bash
-#if [ $# -lt 1 ]
-#	then
-echo 'USAGE: make_inv_Gd_list.sh [ftag] [snrmin]'
-#	exit 1
-#fi
+if [ $# -lt 1 ]
+	then
+	echo 'USAGE: make_inv_Gd_list.sh ftag [snrmin]'
+	exit 1
+fi
 snrmin=0
 if [ $# -eq 2 ]
 	then
 	snrmin=$2
 fi
+ftag=$1
+
 hline="-----------------------------------------------"
-fnm_meas_master='../../measure/ite_0.001deg_01_measure_result_sitkin.dat'
+fnm_meas_master='../../measure/ite_0.05deg_01_measure_result_nacratoncrust_cutbyfreq.dat'
+
+fnm_meas=".measure_temp_"${ftag}
+awk '{ if ( $7 == "'${ftag}'" && $10 >= '$snrmin' ) print }' ${fnm_meas_master} > ${fnm_meas}
+
 # threshold of travel time delays (see delay_vs_dist.png)
 thres_dat=15
-
-if [ $# -eq 1 ]
-        then
-        ftag=$1
-	fnm_meas=".measure_temp_"${ftag}
-	awk '{ if ( $7 == "'${ftag}'" && $10 >= '$snrmin' ) print }' ${fnm_meas_master} > ${fnm_meas}
-	list_Gd="inv_Gd_list_"${ftag}
-else
-	fnm_meas=".measure_temp"
-	awk '{ if ( $10 >= '$snrmin' ) print }' ${fnm_meas_master} > ${fnm_meas}
-	list_Gd="inv_Gd_list"
-fi
 
 ############################################################
 # black list: Do not use stations in this list
@@ -44,6 +38,7 @@ list_twin='inv_twin_list'
 list_phase='inv_phase_list'
 
 list_G_raw='list_G_raw'
+list_Gd="inv_Gd_list_"${ftag}
 
 weig0=0
 
