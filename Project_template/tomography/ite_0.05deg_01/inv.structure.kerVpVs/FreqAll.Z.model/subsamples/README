@@ -1,0 +1,8 @@
+steps to run the inversion with subsampling. Designed and coded by Xiaotao Yang @ Purdue
+1) check run.solver.1th.sh to make sure all inversion files and parametes are correct.
+2) run ./distribute_jobs.sh: this will create symbolic links of the solver script and needed block and G_spool files/folders.
+3) check submit_solver_bylist.sh to make sure all parameters are correct. This file will be shared by all subsampling data sets as a symbolic link.
+4) run ./submit_solver_next.sh: this will submit all inversion jobs. Change this script if needed to make sure the queue and time is correct. This is also the place to overwrite other job submission parameters. If some jobs failed and need to re-run, just rerun this would be enough. If you want to rerun the whole sets, please remove the try.*.dat file before submitting the job.
+5) compute statistics of the models by running: get_model_statistics.m
+6) make needed changes in update_model_smooth.m to read the average or median model from the subsapmling runs.
+
