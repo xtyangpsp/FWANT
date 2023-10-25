@@ -3,7 +3,7 @@
 #******************************************************************************#
 
 FC=mpifort #ifort #ifort #/opt/intel/composer_xe_2013_sp1.2.139/bin/intel64/ifort
-FFLAG=-O3 #-static
+FFLAG=-O3 -check all #-static
 
 #FC=pgf90
 #FFLAG=-O3 -Bstatic
