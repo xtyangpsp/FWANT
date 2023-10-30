@@ -11,7 +11,7 @@ FFLAG=-O3 -check all #-static
 all:
 	#${FC} -o solver_damp_smooth ${FFLAG} mod_LSQR.f90 solver_damp_smooth.f90
 	#${FC} -o solver_damp_smo_loc ${FFLAG} mod_LSQR.f90 solver_damp_smo_loc.f90
-	#${FC} -o solver_damp_smo_loc_yang ${FFLAG} mod_LSQR.f90 solver_damp_smo_loc_yang.f90
-	${FC} -o solver_trupin ${FFLAG} trupin.f90
+	${FC} -o solver_yang ${FFLAG} mod_LSQR.f90 solver_damp_smo_loc_yang.f90
+	#${FC} -o solver_trupin ${FFLAG} trupin.f90
 
 # vim:ft=make:ts=4:sw=4:nu:et:ai:
