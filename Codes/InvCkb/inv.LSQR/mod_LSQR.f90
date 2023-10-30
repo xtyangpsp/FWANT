@@ -357,9 +357,11 @@ function dotp(a,b,n) result(cov2)
 
   integer :: i
   cov2=0.0_DP
+  !$OMP PARALLEL DO PRIVATE(I), REDUCTION(+:cov2)
   do i=1,n
      cov2=cov2+a(i)*b(i)
   enddo
+  !$OMP END PARALLEL DO
 end function dotp
 
 subroutine lax(yy,xx)
