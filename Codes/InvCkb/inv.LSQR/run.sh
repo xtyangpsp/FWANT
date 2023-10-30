@@ -12,13 +12,16 @@
 
 ROOT=/depot/xtyang/data/projects/noahtrupin
 DATA=$ROOT/LSQR_test/example
-SOLVER=$ROOT/FWANT/Codes/InvCkb/inv.LSQR/solver_trupin
+SOLVER=$ROOT/FWANT/Codes/InvCkb/inv.LSQR/solver_yang
 
 time valgrind $SOLVER << EOF
+1
 $DATA/FreqAll.Z.model/inv_Gd_list_abs
+$DATA/block.46x79x43.1x1x1.1x1x1.smooth1th.dat
 2
-5e-3 15
 1 0
 1 0
 3 0
+8 8
+5e-3 15
 EOF
