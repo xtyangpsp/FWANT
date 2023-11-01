@@ -4,15 +4,17 @@ FC = mpifort
 FFLAGS = -03
 HOSTFILE = hostfile
 NPROC = 8
-TARGET = solver_yang
+BINDIR = bin
+TARGET = $(BINDIR)/solver_yang
 
 all:
+	@mkdir -p $(BINDIR)
 	$(FC) -o $(TARGET) $(FFLAG) mod_LSQR.f90 solver_damp_smo_loc_yang.f90
 
 .PHONY: clean run
 
 clean:
-	rm *.mod $(TARGET)
+	rm $(BINDIR) *.mod
 
 run:
 	mpirun --hostfile ./$(HOSTFILE) -np $(NPROC) ./$(TARGET)
