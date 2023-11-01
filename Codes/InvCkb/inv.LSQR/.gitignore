@@ -1,4 +1,5 @@
 # local gitignore
 
 *.swp
+*.mod
 bin/
