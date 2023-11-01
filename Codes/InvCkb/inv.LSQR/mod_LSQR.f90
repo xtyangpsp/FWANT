@@ -16,6 +16,7 @@ module LSQR_mod
 !     ra = coefficient matrix values
 !     ja = column indices
 !     na = array of number of active elements per row
+use mpi
 use, intrinsic :: iso_fortran_env, only : I1B => int8,&
          I2B => int16, I4B => int32,  I8B => int64
 
@@ -27,7 +28,9 @@ public ::       &
   lsqr_init,    &
   lsqr_destroy, &
   lldrow,       &
+  plldrow,      &
   slsqr,        &
+  splsqr,       &
   lgtsol,       &
   lsqr_check,   &
   error_except
@@ -131,12 +134,110 @@ ja(nel+1:nel+ncoef)=idx(1:ncoef)
 nel=nel+ncoef
 end subroutine lldrow
 
+subroutine plldrow(coef, idx, ncoef, rhs)
+    !--------------------------------------------------------------------------
+    ! PLLDROW
+    integer, intent(in) :: ncoef
+    integer, intent(in) :: idx(:)
+    real(DP), intent(in) :: coef(:), rhs
+    integer :: i
+
+    ! if no coefficients... don't write any coefficients
+    if (ncoef <= 0) return
+
+    ! if we exceed our upper bound
+    if (nel + ncoef > max_nel) then
+        write(*, *) mrow + 1, nel, ncoef, max_nel
+        call error_except("exceed max_nel")
+    end if
+
+    mrow = mrow + 1
+    b(mrow) = rhs
+    na(mrow) = ncoef
+
+    ra(nel+1:nel+ncoef) = coef(1:ncoef)
+    ja(nel+1:nel+ncoef) = idx(1:ncoef)
+    nel = nel + ncoef
+
+    !write(*, *) coef(1:ncoef), idx(1:ncoef)
+end subroutine plldrow
+
 subroutine lsqr_check(msg)
 character (len=*),intent(in) :: msg
 write(*,*) msg
 write(*,*) "    max_row,mrow=",max_row,mrow
 write(*,*) "    max_nel,nel=",max_nel,nel
 end subroutine lsqr_check
+
+subroutine splsqr(itct)
+    !--------------------------------------------------------------------------
+    ! CONJUGATE GRADIENT ROUTINE FOR NON-SQUARE LEAST SQUARES
+    !
+    ! parameters:
+    !     ATOL   = ATOL from Paige and Saunders*
+    !     BTOL   = BTOL ""
+    !     CONLIM = CONLIM ""
+    !     MAXIT  = maximum iterations
+    !     ITCT   = iteration count (out)
+    !
+    ! Adapted from Y. Shen (08/23/04)
+    !
+    ! * https://doi.org/10.1145/355984.355989
+    real(DP), parameter :: &
+        ATOL = 1.0e-7_DP,  &
+        BTOL = 1.0e-7_DP,  &
+        CONLIM = 0.0_DP
+    integer, parameter :: maxit = 30000
+    integer, intent(out) :: itct
+
+    ! loop var
+    integer i
+
+    ! variables
+    real(DP) :: alpha, beta, phibar, rhobar, phi, rho, c, s, theta
+    real(DP) :: temp, anorm, test1, test2, rnorm
+
+    ! openmp
+    integer :: rc, rank, nprocs, nworkers, mainrank
+
+    ! housekeeping
+    itct = 0
+    anorm = dotp(ra, ra, nel)
+
+    write(*, "(i0, ' columns, ', i0, ' rows, ', i0, ' elements')") ncol, mrow, nel
+    u = b
+    call lnrliz(beta, u, mrow)
+
+    ! A transpose u -> v
+    call laty(v, u)
+    call lnrliz(alpha, v, ncol)
+
+    ! v -> w
+    w = v
+
+    ! zero out vectors
+    x = 0.0_DP
+    sig = 0.0_DP
+
+    ! phibar and rhobar
+    phibar = beta
+    rhobar = alpha
+
+    ! init openmpi
+    call mpi_init(rc)
+
+    ! number of active processes
+    call mpi_comm_size(mpi_comm_world, nprocs, rc)
+
+    mainrank = 0
+    nworkers = nprocs - 1
+
+    ! get current process
+    call mpi_comm_rank(mpi_comm_world, rank, rc)
+
+    ! takedown openmpi
+    call mpi_finalize(rc)
+end subroutine splsqr
 
 subroutine slsqr(itct)
 ! ... conjugate gradient routine for non-square least squares
