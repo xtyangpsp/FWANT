@@ -174,7 +174,7 @@ subroutine splsqr(itct)
     ! CONJUGATE GRADIENT ROUTINE FOR NON-SQUARE LEAST SQUARES
     !
     ! parameters:
-    !     ATOL   = ATOL from Paige and Saunders*
+    !     ATOL   = ATOL from Paige and Saunders
     !     BTOL   = BTOL ""
     !     CONLIM = CONLIM ""
     !     MAXIT  = maximum iterations
@@ -182,7 +182,8 @@ subroutine splsqr(itct)
     !
     ! Adapted from Y. Shen (08/23/04)
     !
-    ! * https://doi.org/10.1145/355984.355989
+    ! References
+    !     Paige and Saunders: https://doi.org/10.1145/355984.355989
     real(DP), parameter :: &
         ATOL = 1.0e-7_DP,  &
         BTOL = 1.0e-7_DP,  &
@@ -199,6 +200,7 @@ subroutine splsqr(itct)
 
     ! openmp
     integer :: rc, rank, nprocs, nworkers, mainrank
+    real(DP) :: starttime, endtime
 
     ! housekeeping
     itct = 0
@@ -235,9 +237,36 @@ subroutine splsqr(itct)
     ! get current process
     call mpi_comm_rank(mpi_comm_world, rank, rc)
 
+    if (rank .eq. mainrank) then
+        starttime = mpi_wtime()
+        call splsqr_main(nworkers)
+        endtime = mpi_wtime()
+
+        print '("--- Timing: ", f6.4, " sec on ", i0, " workers")', &
+            starttime - endtime, nworkers
+    else
+        call splsqr_worker(nworkers, rank)
+    endif
+
     ! takedown openmpi
     call mpi_finalize(rc)
 end subroutine splsqr
+
+subroutine splsqr_main(nworkers)
+    character(len=*), parameter :: FMT = '("--- Master [", i4, 5(a, i2.2), "]")'
+    integer, intent(in) :: nworkers
+    integer :: dt(8)
+
+    call date_and_time(values = dt)
+    print FMT, dt(1), '/', dt(2), '/', dt(3), ' ', dt(5), ':', dt(6), ':', dt(7)
+end subroutine splsqr_main
+
+subroutine splsqr_worker(nworkers, rank)
+    integer, intent(in) :: nworkers, rank
+
+    print '(a, i0)', '>>> Hello from worker ', rank
+    call sleep(1)
+end subroutine splsqr_worker
 
 subroutine slsqr(itct)
 ! ... conjugate gradient routine for non-square least squares

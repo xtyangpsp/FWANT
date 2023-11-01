@@ -14,7 +14,7 @@ ROOT=/depot/xtyang/data/projects/noahtrupin
 DATA=$ROOT/LSQR_test/example
 SOLVER=$ROOT/FWANT/Codes/InvCkb/inv.LSQR/solver_yang
 
-time valgrind $SOLVER << EOF
+time $SOLVER << EOF
 1
 $DATA/FreqAll.Z.model/inv_Gd_list_abs
 $DATA/block.46x79x43.1x1x1.1x1x1.smooth1th.dat

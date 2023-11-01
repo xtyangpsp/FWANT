@@ -253,7 +253,7 @@ icount=icount+1
   rhs_max_weig=max(rhs_max_weig,rhs)
 !debug
 ! write(*,*) 'lldrow called: ', icount
-  call lldrow(coef_dp,indx,m,real(rhs,DP))
+  call plldrow(coef_dp,indx,m,real(rhs,DP))
 !debug
 !   write(*,*) 'lldrow finished: '
 end do list_loop
@@ -272,7 +272,7 @@ do i=1,num_xval
    !write(*,*) i
    coef_dp(1)=lamb
    indx(1)=i
-   call lldrow(coef_dp,indx,1,0.0_DP)
+   call plldrow(coef_dp,indx,1,0.0_DP)
 end do
 
 call lsqr_check("  ---- data, station and event + dampping ----")
@@ -288,7 +288,7 @@ do n=1,nrow_smoth
          indx(i)=indx0(i)+(k-1)*num_blk
          coef_dp(i)=coef_sp(i)*eta
       end do
-      call lldrow(coef_dp,indx,ncoef,0.0_DP)
+      call plldrow(coef_dp,indx,ncoef,0.0_DP)
    end do
 end do
 close(gid)
@@ -297,7 +297,7 @@ call lsqr_check("  ---- data, station and event + dampping + smoothing ----")
 
 !--------------------------- solving -------------------------
 write(*,*) "    begin solving"
-call slsqr(nit)
+call splsqr(nit)
 call lgtsol(mval,errx,num_xval)
 write(*,*) "    finish solving"
 !do i=num_mval+1,num_mval+num_sta
@@ -452,7 +452,7 @@ do
   max_bd=max(max_bd,nael)
   max_nel=max_nel+nael
   !debug
-  write(*,*) max_nel,icount
+  !write(*,*) max_nel,icount
 end do
 close(fid)
 
