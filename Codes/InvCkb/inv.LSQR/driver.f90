@@ -125,6 +125,18 @@ contains
             ! check for extreme measurements
             if (abs(rhs) > data_threshold) cycle
 
+            ! TODO: number of stations and weighting
+            ! TODO: number of events and weighting
+            ! TODO: number of locations and weighting
+            ! TODO: check kernel value
+            ! TODO: station term
+            ! TODO: event term
+            ! TODO: location term
+            ! TODO: calculate rhs min and max
+            ! TODO: covariance matrix
+            ! TODO: rhs min and max weighting
+            ! TODO: add row to matrix
+
             if (modulo(nlines, 1000) == 0) &
                 write(*, "(A, /)") "Read 1000 lines"
         end do read_loop
