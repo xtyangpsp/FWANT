@@ -23,7 +23,8 @@ module CompressedSparseMatrix
     integer(I64), allocatable :: col_ind(:), row_ptr(:)
     integer(I64) :: max_row, max_nel, row_index_ptr
 
-    public :: csm_init, csm_output_n_rows, csm_insert_row, csm_free, csm_splsqr
+    public :: csm_init, csm_output_n_rows, csm_insert_row, csm_free, csm_cgls,
+        csm_error, x
 
 contains
 
@@ -96,11 +97,12 @@ contains
         deallocate(col_ind)
     end subroutine csm_free
 
-    subroutine csm_splsqr(rank, nproc, itcount)
+    subroutine csm_cgls(rank, nproc, x, itcount)
         !--------------------------------------------------------------
         ! CONJUGATE GRADIENT ROUTINE FOR NON-SQUARE LEAST SQUARES
         !
         integer, intent(in) :: rank, nproc
+        real(DP) :: x(ncol)
         integer, intent(out) :: itcount
 
         real(DP), parameter :: tol = 1.0e-7_DP
@@ -109,7 +111,7 @@ contains
             tmp, anorm, test1, test2, rnorm
         real(DP) :: u(mrow), v(ncol), &
             sig(ncol), q(mrow), &
-            x(ncol), w(ncol)
+            w(ncol)
         integer :: i, ierr, maxiter = 30000
 
         if (rank == 0) then
@@ -191,7 +193,7 @@ contains
             end if
         end if
 
-    end subroutine csm_splsqr
+    end subroutine csm_cgls
 
     subroutine linearize(vec, scalar)
         real(DP), intent(inout) :: vec(:)
@@ -228,7 +230,6 @@ contains
         real(DP), intent(out) :: y(:)
         real(DP) :: y0
         integer :: i, j, l, l1, l2
-
 
         l2 = 0
 
