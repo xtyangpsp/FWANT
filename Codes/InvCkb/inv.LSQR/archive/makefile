@@ -1,21 +1,22 @@
 .POSIX:
 
 FC = mpifort
-FFLAGS = -O3 -fopenmp -fcheck=all
+FFLAGS = -03
 HOSTFILE = hostfile
+NPROC = 8
 BINDIR = bin
-TARGET = $(BINDIR)/solver
+TARGET = $(BINDIR)/solver_yang
 
 all:
 	@mkdir -p $(BINDIR)
-	$(FC) -o $(TARGET) $(FFLAGS) driver.f90 csmatrix.f90
+	$(FC) -o $(TARGET) $(FFLAG) driver.f90 # mod_LSQR.f90 mod_yang.f90 #mod_LSQR.f90 solver_damp_smo_loc_yang.f90
 
 .PHONY: clean run
 
 clean:
 	rm $(BINDIR) *.mod
 
-run: all
+run:
 	sh run.sh
 
 
