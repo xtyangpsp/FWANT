@@ -42,6 +42,9 @@ contains
         integer :: nthreads, tid
         integer :: group_size_omp = 1
 
+        ! PROFILING
+        real :: start, finish
+
         ! PARAMETERS
         character(len = 10) :: mode
         character(len = 132) :: gmat_list, smooth_op
@@ -75,48 +78,61 @@ contains
         call mpi_barrier(MPI_COMM_WORLD, ierr)
         if (ierr /= 0) call throw("mpi failed to bar")
 
-        ! load parameters
-        call get_input(mode, gmat_list, smooth_op, inv_struct_cmps, nstations, &
-            nevents, nlocations, station_weighting, event_weighting, &
-            location_weighting, damping, smoothing, kernel_threshold, &
-            data_threshold)
-        call checkpoint("retrieved user input")
+        ! main rank only, load once
+        if (rank == 0) then
+            ! start timer
+            call cpu_time(starttime)
 
-        ! get smoothing
-        call get_smoothing(smooth_op, inv_struct_cmps, sm_max_row, sm_max_band, &
-            sm_max_elements)
-        call checkpoint("retrieved smoothing data")
+            ! load parameters
+            call get_input(mode, gmat_list, smooth_op, inv_struct_cmps, nstations, &
+                nevents, nlocations, station_weighting, event_weighting, &
+                location_weighting, damping, smoothing, kernel_threshold, &
+                data_threshold)
+            call checkpoint("retrieved user input")
 
-        ! get damping
-        call get_damping(gmat_list, inv_struct_cmps, nstations, nevents, &
-            nlocations, max_data, max_station, max_event, max_location, &
-            max_m, max_x, max_size, max_row, max_band, max_elements)
-        max_row = max_row + sm_max_row
-        max_elements = max_elements + sm_max_elements
-        max_band = max(max_band, sm_max_band)
-        max_size = max(max_size, max_row)
-        write(*, "('max # of elements: ', I0)") max_elements
-        write(*, "('max size: ', I0)") max_size
-        write(*,*) '# of cmp, sta, evt, loc per data'
-        write(*,*) inv_struct_cmps, nstations, nevents, nlocations
-        write(*,*) '# of dat, mval, xval, size'
-        write(*,*) max_data, max_m, max_x, max_size
-        write(*,*) '# of row, band, nel'
-        write(*,*) max_row, max_band, max_elements
-        call checkpoint("retrieved damping data")
+            ! get smoothing
+            call get_smoothing(smooth_op, inv_struct_cmps, sm_max_row, sm_max_band, &
+                sm_max_elements)
+            call checkpoint("retrieved smoothing data")
 
-        ! allocate matrix
-        call csm_init(max_elements, max_row, max_x)
-        call checkpoint("allocated G, m, d")
+            ! get damping
+            call get_damping(gmat_list, inv_struct_cmps, nstations, nevents, &
+                nlocations, max_data, max_station, max_event, max_location, &
+                max_m, max_x, max_size, max_row, max_band, max_elements)
+            max_row = max_row + sm_max_row
+                max_elements = max_elements + sm_max_elements
+            max_band = max(max_band, sm_max_band)
+            max_size = max(max_size, max_row)
+            write(*, "('max # of elements: ', I0)") max_elements
+            write(*, "('max size: ', I0)") max_size
+            write(*,*) '# of cmp, sta, evt, loc per data'
+            write(*,*) inv_struct_cmps, nstations, nevents, nlocations
+            write(*,*) '# of dat, mval, xval, size'
+            write(*,*) max_data, max_m, max_x, max_size
+            write(*,*) '# of row, band, nel'
+            write(*,*) max_row, max_band, max_elements
+            call checkpoint("retrieved damping data")
 
-        call load_gmat(gmat_list, smooth_op, inv_struct_cmps, nstations, nevents, &
-            nlocations, station_weighting, event_weighting, location_weighting, &
-            damping, smoothing, kernel_threshold, data_threshold, max_x, max_m, &
-            max_band, sm_max_row, sm_max_band, sm_max_elements)
+            ! allocate matrix
+            call csm_init(max_elements, max_row, max_x)
+            call checkpoint("allocated G, m, d")
 
-        call call_cgls(rank, nproc, max_x)
+            call load_gmat(gmat_list, smooth_op, inv_struct_cmps, nstations, nevents, &
+                nlocations, station_weighting, event_weighting, location_weighting, &
+                damping, smoothing, kernel_threshold, data_threshold, max_x, max_m, &
+                max_band, sm_max_row, sm_max_band, sm_max_elements)
 
-        call csm_free()
+            ! send data
+            call call_cgls(rank, nproc, max_x)
+            call checkpoint("solver finished")
+            !call csm_scatter()
+
+            call csm_free()
+        else
+            !call csm_gather_kernel(rank, nproc)
+            call csm_free()
+            ! call call_cgls(rank, nproc, max_x)
+        end if
     end subroutine main
 
     subroutine get_input(mode, gmat_list, smooth_op, inv_struct_cmps, &
@@ -477,6 +493,9 @@ contains
 
         call checkpoint("loaded G, d")
 
+        !call csm_scatter_kernel(nproc)
+        !call checkpoint("scattered kernel")
+
         ! apply damping
         do i = 1, max_x
             coef_dp(1) = damping
@@ -574,7 +593,10 @@ contains
     subroutine checkpoint(msg)
         character(len=*), intent(in) :: msg
 
-        write(*, "('CHECKPOINT: ', A, /, A)") trim(msg), hline
+        call cpu_time(endtime)
+        write(*, "('CHECKPOINT: ', A, '. Elapsed time ', F6.3,  /, A)") &
+            trim(msg), endtime - starttime, hline
+        call cpu_time(starttime)
     end subroutine checkpoint
 
     ! throw an error, exit program

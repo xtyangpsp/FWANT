@@ -1,4 +1,5 @@
 module CompressedSparseMatrix
+    use mpi
     use, intrinsic :: iso_fortran_env, only : &
         I8 => int8, &
         I16 => int16, &
@@ -23,7 +24,8 @@ module CompressedSparseMatrix
     integer(I64), allocatable :: col_ind(:), row_ptr(:)
     integer(I64) :: max_row, max_nel, row_index_ptr
 
-    public :: csm_init, csm_output_n_rows, csm_insert_row, csm_free, csm_cgls
+    public :: csm_init, csm_output_n_rows, csm_insert_row, csm_free, csm_cgls, &
+        csm_scatter_kernel, csm_gather_kernel
 
 contains
 
@@ -95,6 +97,113 @@ contains
         deallocate(row_ptr)
         deallocate(col_ind)
     end subroutine csm_free
+
+    subroutine csm_scatter_kernel(nproc)
+        integer, intent(in) :: nproc
+
+        real(DP), allocatable :: b_values(:)
+        integer, allocatable :: b_col_ind(:), b_row_ptr(:), b_nz(:)
+        integer :: nblocks, block, i, j, current_row, start_col, &
+            end_col, ierr
+
+        nblocks = nproc - 1
+
+        allocate(b_nz(nblocks))
+        b_nz = 0
+
+        ! first pass, count
+        do block = 1, nblocks - 1
+            start_col = (block - 1) * ncol / nblocks
+            end_col = block * ncol / nblocks - 1
+
+            do i = 1, mrow
+                do j = row_ptr(i), row_ptr(i + 1) - 1
+                    if (col_ind(j) >= start_col .and. col_ind(j) <= end_col) then
+                        b_nz(block) = b_nz(block) + 1
+                    end if
+                end do
+            end do
+        end do
+
+        ! populate and send blocks
+        do block = 1, nblocks
+
+            ! allocate memory
+            print "('ROUND ', I0)", block
+            allocate(b_values(b_nz(block)))
+            allocate(b_col_ind(b_nz(block)))
+            allocate(b_row_ptr(mrow + 1))
+            print *, "ALLOCATED"
+
+            start_col = (block - 1) * ncol / nblocks
+            end_col = block * ncol / nblocks - 1
+            b_row_ptr(1) = 1
+
+            do i = 1, mrow
+                current_row = 0
+                do j = row_ptr(i), row_ptr(i + 1) - 1
+                    if (col_ind(j) >= start_col .and. col_ind(j) <= end_col) then
+                        b_nz(block) = b_nz(block + 1)
+                        b_values(b_nz(block)) = val(j)
+                        b_col_ind(b_nz(block)) = col_ind(j) - start_col + 1
+                        current_row = current_row + 1
+                    end if
+                end do
+                b_row_ptr(i + 1) = b_row_ptr(i + 1) + current_row
+            end do
+
+            ! send params
+            call mpi_send(b_nz, 1, MPI_LONG_LONG, block, 1, MPI_COMM_WORLD, &
+                ierr)
+            call mpi_send(mrow, 1, MPI_LONG_LONG, block, 1, MPI_COMM_WORLD, &
+                ierr)
+            call mpi_send(ncol, 1, MPI_LONG_LONG, block, 1, MPI_COMM_WORLD, &
+                ierr)
+
+            ! send data
+            call mpi_send(b_nz(block), 1, MPI_INT, block, 1, MPI_COMM_WORLD, &
+                ierr)
+            call mpi_send(b_values(:), b_nz(block), MPI_DOUBLE, block, 1, &
+                MPI_COMM_WORLD, ierr)
+            call mpi_send(b_col_ind(:), b_nz(block), MPI_LONG_LONG, block, 1, &
+                MPI_COMM_WORLD, ierr)
+            print "('sent kernel to process ', I0)", block
+            !call MPI_Send(b_values(block, :), mrow + 1, MPI_LONG_LONG, block, 1 &
+            !    MPI_COMM_WORLD, ierr)
+
+            ! free
+            deallocate(b_values)
+            deallocate(b_col_ind)
+            deallocate(b_row_ptr)
+        end do
+
+        deallocate(b_nz)
+
+    end subroutine csm_scatter_kernel
+
+    subroutine csm_gather_kernel(rank, nproc)
+        integer, intent(in) :: rank, nproc
+        integer(I64) :: b_nz, b_mrow, b_ncol
+        integer :: ierr
+
+        ! receive params
+        call mpi_recv(b_nz, 1, MPI_LONG_LONG, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE, &
+            ierr)
+        call mpi_recv(b_mrow, 1, MPI_LONG_LONG, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE, &
+            ierr)
+        call mpi_recv(b_ncol, 1, MPI_LONG_LONG, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE, &
+            ierr)
+
+        call csm_init(b_nz, b_mrow, b_ncol)
+
+        ! receive data
+        call mpi_recv(val(:), int(b_nz), MPI_DOUBLE, 0, 1, MPI_COMM_WORLD, &
+            MPI_STATUS_IGNORE, ierr)
+        call mpi_recv(col_ind(:), int(b_nz), MPI_LONG_LONG, 0, 1, MPI_COMM_WORLD, &
+            MPI_STATUS_IGNORE, ierr)
+
+        print "('received kernel on process ', I0)", rank
+    end subroutine csm_gather_kernel
 
     subroutine csm_cgls(rank, nproc, x, itcount)
         !--------------------------------------------------------------

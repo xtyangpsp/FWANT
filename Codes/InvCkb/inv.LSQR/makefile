@@ -1,7 +1,7 @@
 .POSIX:
 
 FC = mpifort
-FFLAGS = -O3 -fopenmp -fcheck=all
+FFLAGS = -Ofast -ipo -fopenmp -Wall
 HOSTFILE = hostfile
 BINDIR = bin
 TARGET = $(BINDIR)/solver
