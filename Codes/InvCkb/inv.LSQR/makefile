@@ -9,7 +9,7 @@ FFLAG=-O3 #-static
 #FFLAG=-O3 -Bstatic
 
 all:
-	${FC} -o solver_damp_smooth ${FFLAG} mod_LSQR.f90 solver_damp_smooth.f90
+	#${FC} -o solver_damp_smooth ${FFLAG} mod_LSQR.f90 solver_damp_smooth.f90
 	#${FC} -o solver_damp_smo_loc ${FFLAG} mod_LSQR.f90 solver_damp_smo_loc.f90
 	${FC} -o solver_damp_smo_loc_yang ${FFLAG} mod_LSQR.f90 solver_damp_smo_loc_yang.f90
 
