@@ -409,6 +409,7 @@ case ('thickness')
         L%d(k)=L%z(k-1)+L%d(k-1)
      end do
 case ('depth')
+     L%d=L%z
 case default
      call error_except("layer_meaning can only take axis, depth or thickness")
 end select
