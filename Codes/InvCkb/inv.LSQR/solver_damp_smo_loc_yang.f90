@@ -452,7 +452,7 @@ do
   max_bd=max(max_bd,nael)
   max_nel=max_nel+nael
   !debug
-  write(*,*) max_nel,icount
+  !write(*,*) max_nel,icount
 end do
 close(fid)
 
