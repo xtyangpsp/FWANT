@@ -41,7 +41,7 @@ integer(I8B) :: ncol,max_row,max_nel
 integer(I8B) :: mrow,nel
 real(DP) :: res2
 
-integer,allocatable :: ja(:),na(:)
+integer(I8B),allocatable :: ja(:),na(:)
 real(DP),dimension(:),allocatable ::  &
   ra,x,b,u,v,w, q,sig
 
@@ -111,10 +111,10 @@ end subroutine lsqr_destroy
 ! ... add one equation of data into row of matrix
 !     for conjugate gradient method (slsqr) of solution
 subroutine lldrow(coef,idx,ncoef,rhs)
-integer,intent(in) :: ncoef
-integer,intent(in) :: idx(:)
+integer(I8B),intent(in) :: ncoef
+integer(I8B),intent(in) :: idx(:)
 real(DP),intent(in) :: coef(:),rhs
-integer :: i
+!integer :: i
 
 if (ncoef<=0) return
 
@@ -161,7 +161,7 @@ real(DP),parameter :: &
 integer,parameter :: maxit=30000
 integer,intent(out) :: itct
 
-integer :: i
+integer(I8B):: i
 real(DP) :: alpha,beta,phibar,rhobar,phi,rho,c,s,theta
 real(DP) :: temp,anorm,test1,test2,rnorm
 
@@ -284,7 +284,7 @@ subroutine lgtsol(solvec,serr,nvar)
   integer(I8B) :: nvar, itemp=1
 
   real(DP) :: temp
-  integer :: i
+  integer(I8B):: i
 
   temp = res2/dble(max0(mrow-nvar,itemp))
   do i=1,nvar
@@ -299,7 +299,7 @@ subroutine lnrliz(v0,vect,n)
 integer(I8B),intent(in) :: n
 real(DP) :: v0,vect(:)
 
-integer :: i
+integer(I8B):: i
 
 v0 = dotp(vect,vect,n)
 v0 = dsqrt(v0)
@@ -338,7 +338,7 @@ subroutine lupdat(a,b,flag,scal,n)
   integer(I8B),intent(in) :: n
   character (len=*) :: flag
 
-  integer :: i
+  integer(I8B):: i
   if (flag(1:1).eq.'+') then
      do i=1,n
         a(i) = b(i)+a(i)*scal
@@ -355,7 +355,7 @@ function dotp(a,b,n) result(cov2)
   real(DP),intent(in) :: a(:),b(:)
   real(DP) :: cov2
 
-  integer :: i
+  integer(I8B):: i
   cov2=0.0_DP
   do i=1,n
      cov2=cov2+a(i)*b(i)
@@ -368,7 +368,7 @@ subroutine lax(yy,xx)
 !c       to  be of length "ncol";  the output Y is returned in
 !       the dummy array "yy" of length "mrow"
   real(DP) :: xx(:),yy(:),y0
-  integer :: i,j,l,l1,l2
+  integer(I8B):: i,j,l,l1,l2
   l2 = 0
   do i=1,mrow
      y0 = 0.d0
@@ -387,7 +387,7 @@ subroutine laty(xx,yy)
 !       array "yy" and the results are returned in the dummy array "xx"
 !       which is of length "ncol"
   real(DP) :: xx(:),yy(:),yi
-  integer :: i,j,l,l1,l2
+  integer(I8B):: i,j,l,l1,l2
   l2 = 0
   do i=1,ncol
      xx(i) = 0.0_DP

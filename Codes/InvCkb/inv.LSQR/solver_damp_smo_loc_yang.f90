@@ -60,15 +60,15 @@ integer(I8B) ::                                     &
   num_sta,num_evt,num_loc,num_row,num_bd
 integer::num_blk
 integer(I8B)::num_nel
-integer,allocatable :: idsta(:),idevt(:),idloc(:)
+integer(I8B),allocatable :: idsta(:),idevt(:),idloc(:)
 real(DP),allocatable :: wgloc(:)
 
-integer :: nit, i,j,k,m,n
-integer :: ncoef
+integer(I8B):: nit, i,j,k,m,n
+integer(I8B):: ncoef
 integer(I8B)::nael
 integer :: listid,gid,ierr
 
-integer,dimension(:),allocatable :: indx0,indx
+integer(I8B),dimension(:),allocatable :: indx0,indx
 real(SP),dimension(:),allocatable :: coef_sp
 real(DP),dimension(:),allocatable :: coef_dp
 real(DP),dimension(:),allocatable :: mval,errx
