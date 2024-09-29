@@ -53,7 +53,7 @@ real(SP),dimension(3) :: ker0
 !integer,parameter :: INT_KIND = SELECTED_INT_KIND(15) !has the largest value of
 !R in selected_int_kind(R).
 integer(I8B) :: imultis
-integer(I8B) :: num_cmp,nsta,nevt,nloc
+integer :: num_cmp,nsta,nevt,nloc
 integer(I8B) :: nrow_smoth,nbd_smoth,nel_smoth
 integer(I8B) ::                                     &
   num_dat,num_mval,num_xval,num_siz1d, &
@@ -63,12 +63,13 @@ integer(I8B)::num_nel
 integer(I8B),allocatable :: idsta(:),idevt(:),idloc(:)
 real(DP),allocatable :: wgloc(:)
 
-integer(I8B):: nit, i,j,k,m,n
-integer(I8B):: ncoef
+integer :: nit
+integer:: i,j,k,n
+integer:: ncoef,m
 integer(I8B)::nael
 integer :: listid,gid,ierr
 
-integer(I8B),dimension(:),allocatable :: indx0,indx
+integer,dimension(:),allocatable :: indx0,indx
 real(SP),dimension(:),allocatable :: coef_sp
 real(DP),dimension(:),allocatable :: coef_dp
 real(DP),dimension(:),allocatable :: mval,errx
@@ -123,7 +124,6 @@ write(*,*) " ",ker_thres, data_thres
 
 !--------------------------- initial ---------------------------
 call init_smoothing(fnm_smooth,num_cmp,nrow_smoth,nbd_smoth,nel_smoth)
-
 call init_data_damp(fnm_list,num_cmp,nsta,nevt,nloc,    &
      num_dat,num_sta,num_evt,num_loc,num_mval,num_xval, &
      num_siz1d,num_row,num_bd,num_nel)
@@ -166,7 +166,6 @@ icount=icount+1
      n=index(rcdstr(1:len_trim(rcdstr))," ")
      fnm_G=rcdstr(1:n)
      rcdstr(1:)=rcdstr(n+1:); rcdstr=adjustl(rcdstr)
-
      open(gid,file=trim(fnm_G),status='old',iostat=ierr,form='unformatted')
      if (ierr>0) call error_except("open kernel err:"//trim(fnm_G))
      read(gid) num_blk,ker0(k)
@@ -324,7 +323,7 @@ contains
 !----------------------------------------------------------
 
 subroutine alloc_var(nst,nev,nlo,nx,nbd)
-  integer(I8B) :: nst,nev,nlo
+  integer :: nst,nev,nlo
   integer(I8B) :: nx,nbd
   if (nst>0) then
      allocate(idsta(nst)); idsta=0.0
@@ -348,7 +347,7 @@ end subroutine alloc_var
 
 subroutine init_smoothing(filenm,ncmp,max_row,max_bd,max_nel)
 character (len=*),intent(in) :: filenm
-integer(I8B),intent(in) :: ncmp
+integer,intent(in) :: ncmp
 integer(I8B),intent(out) :: max_row,max_bd,max_nel
 integer :: fid,nblk,ierr
 
@@ -367,7 +366,7 @@ subroutine init_data_damp(filenm,ncmp,nst,nev,nlo,  &
     max_dat,max_st,max_ev,max_lo,max_mval,max_xval, &
     max_siz,max_row,max_bd,max_nel)
 character (len=*),intent(in) :: filenm
-integer(I8B),intent(in) :: ncmp,nst,nev,nlo
+integer,intent(in) :: ncmp,nst,nev,nlo
 integer(I8B),intent(out) ::                     &
   max_dat,max_st,max_ev,max_lo,max_mval,max_xval, &
   max_siz,max_row,max_bd,max_nel
@@ -400,11 +399,9 @@ if (ierr>0) call error_except("init_G_scale open err:"//trim(filenm))
 do
   !!debug
   icount=icount+1
-
   read(fid,'(a300)',iostat=ierr) rcdstr
   if (ierr<0) exit
   rcdstr=adjustl(rcdstr); if (rcdstr(1:1)=='#') cycle
-
   max_dat=max_dat+1
   nael=0
   do k=1,ncmp
@@ -413,13 +410,9 @@ do
      !write(*,*) trim(fnm_k) !debug
      rcdstr(1:)=rcdstr(n+1:); rcdstr=adjustl(rcdstr)
      open(gid,file=trim(fnm_k),status='old',iostat=ierr,form='unformatted')
-!      write(*,*) 'test1'
      if (ierr>0) call error_except("init_G_scale kfile err:"//trim(filenm))
      read(gid) nblk, ker0
-     ! write(*,*) 'test2:',nblk, ker0
      read(gid) ncoef
-     !!debug
-     ! write(*,*) 'test3',ncoef
      close(gid)
      nael=nael+ncoef
 

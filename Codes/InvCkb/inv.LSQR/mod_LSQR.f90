@@ -111,8 +111,8 @@ end subroutine lsqr_destroy
 ! ... add one equation of data into row of matrix
 !     for conjugate gradient method (slsqr) of solution
 subroutine lldrow(coef,idx,ncoef,rhs)
-integer(I8B),intent(in) :: ncoef
-integer(I8B),intent(in) :: idx(:)
+integer,intent(in) :: ncoef
+integer,intent(in) :: idx(:)
 real(DP),intent(in) :: coef(:),rhs
 !integer :: i
 
