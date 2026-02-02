@@ -24,6 +24,7 @@ snap_T_start=[sim_boundary_layers(1)+3 sim_boundary_layers(2)+3 22];
 snap_T_interval=[10 10 5];
 snap_T_time_interval=5;
 
+allow_missing_grids=1; %THIS, IF TRUE (1), WILL TOLERATE THE PARAMETERS WHEN SOME GRIDS ARE NOT SAVED.
 %saving option for surface velocity only.
 
 snap_V_start=[sim_boundary_layers(1)+1 sim_boundary_layers(2)+1 nz];
@@ -74,16 +75,19 @@ totaly = snap_T_start(2) + (snap_T_par(2) - 1)*snap_T_interval(2) + sim_boundary
 totalz = snap_T_start(3) + (snap_T_par(3) - 1)*snap_T_interval(3) + sim_boundary_layers(3);
 
 totalx,totaly,totalz
-if totalx < nx
-    error('Not all grids (excluding boundary layers) are saved in X direction.')
+if allow_missing_grids && (totalx < nx || totaly<ny || totalz < nz)
+    warning('Some grids are missing. Allowing it, as specified by user.')
+else
+    if totalx < nx
+        error('Not all grids (excluding boundary layers) are saved in X direction.')
+    end
+    if totaly < ny
+        error('Not all grids (excluding boundary layers) are saved in Y direction.')
+    end
+    if totalz < nz
+        error('Not all grids (excluding boundary layers) are saved in Z direction.')
+    end
 end
-if totaly < ny
-    error('Not all grids (excluding boundary layers) are saved in Y direction.')
-end
-if totalz < nz
-    error('Not all grids (excluding boundary layers) are saved in Z direction.')
-end
-
 snap_V_par=[nx-2*sim_boundary_layers(1) ny-2*sim_boundary_layers(2) 1];
 
 disp(['snap_001 = ' num2str(snap_T_start) ' ' num2str(floor(snap_T_par)) ' ' num2str(snap_T_interval) ...
