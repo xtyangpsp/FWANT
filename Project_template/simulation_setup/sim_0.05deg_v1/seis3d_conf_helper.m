@@ -3,7 +3,7 @@
 %parameters in seis3d configuration files.
 clc;
 %inline function to compute snap parameters
-snappar=@(t,s,b,d) (t+1-s-b)./d; 
+snappar=@(t,s,b,d) floor((t+d-s-b)./d); 
 %t: total number of grid points; s: start index; b: number of boundary
 %grids at the end; d: interval;
 
@@ -17,23 +17,26 @@ nx=gridmetadata.nx;
 ny=gridmetadata.ny;
 nz=gridmetadata.nz;
 
+%boundary layers
+sim_boundary_layers=[12 12 0];
 %saving option for full strain tensor.
-snap_T_start=[13 13 40];
-snap_T_interval=[4 4 2];
+snap_T_start=[sim_boundary_layers(1)+3 sim_boundary_layers(2)+3 22];
+snap_T_interval=[10 10 5];
 snap_T_time_interval=5;
 
 %saving option for surface velocity only.
-snap_V_start=[13 13 nz];
+
+snap_V_start=[sim_boundary_layers(1)+1 sim_boundary_layers(2)+1 nz];
 snap_V_interval=[1 1 1];
-snap_V_time_interval=5;
+snap_V_time_interval=snap_T_time_interval;
 
 receiver_z=9000E3;
-inline_receiver_interval_x=[0.15 0.0 0.0];
-inline_receiver_interval_y=[0.0 0.15 0.0];
+inline_receiver_interval_x=[dlat*2 0.0 0.0];
+inline_receiver_interval_y=[0.0 dlat*2 0.0];
 
 inlineposition='center';
 
-receiver_geolocation=[maxlat-0.5 maxlon-0.5;minlat minlon];%;maxlat-0.5 minlon;minlat maxlon-0.5]; %we don't use colatitude here. 
+receiver_geolocation=[maxlat-dlat*10 maxlon-dlat*10;minlat minlon];%;maxlat-0.5 minlon;minlat maxlon-0.5]; %we don't use colatitude here. 
 %it will be converted to colatitude for the configuration file.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -43,9 +46,9 @@ receiver_geolocation=[maxlat-0.5 maxlon-0.5;minlat minlon];%;maxlat-0.5 minlon;m
 if 1
     gridfile='gridall.dat';
 
-    gridx_nm=strcat('./config/grid/gridx_',num2str(gridxsize),'.dat');
-    gridy_nm=strcat('./config/grid/gridy_',num2str(gridxsize),'.dat');
-    gridz_nm=strcat('./config/grid/gridz_',num2str(gridxsize),'.dat');
+    gridx_nm=strcat('./config/grid/gridx_',num2str(gridxsize,'%.5f'),'.dat');
+    gridy_nm=strcat('./config/grid/gridy_',num2str(gridxsize,'%.5f'),'.dat');
+    gridz_nm=strcat('./config/grid/gridz_',num2str(gridxsize,'%.5f'),'.dat');
 
     unix(['echo "# x grid" > ' gridfile]);
     unix(['echo "<x grid>" >>' gridfile]);
@@ -62,9 +65,26 @@ if 1
     disp(['all grid info saved in a single file: ' gridfile]);
 end
 % generate snapshot lines:
-%wron usually, check manually
-snap_T_par=snappar([nx ny nz],snap_T_start,[12 12 0],snap_T_interval);
-snap_V_par=[nx-24 ny-24 1];
+%wrong usually, check manually
+snap_T_par=snappar([nx ny nz],snap_T_start,sim_boundary_layers,snap_T_interval);
+snap_T_par
+%check the snap_T_par
+totalx = snap_T_start(1) + (snap_T_par(1) - 1)*snap_T_interval(1) + sim_boundary_layers(1);
+totaly = snap_T_start(2) + (snap_T_par(2) - 1)*snap_T_interval(2) + sim_boundary_layers(2);
+totalz = snap_T_start(3) + (snap_T_par(3) - 1)*snap_T_interval(3) + sim_boundary_layers(3);
+
+totalx,totaly,totalz
+if totalx < nx
+    error('Not all grids (excluding boundary layers) are saved in X direction.')
+end
+if totaly < ny
+    error('Not all grids (excluding boundary layers) are saved in Y direction.')
+end
+if totalz < nz
+    error('Not all grids (excluding boundary layers) are saved in Z direction.')
+end
+
+snap_V_par=[nx-2*sim_boundary_layers(1) ny-2*sim_boundary_layers(2) 1];
 
 disp(['snap_001 = ' num2str(snap_T_start) ' ' num2str(floor(snap_T_par)) ' ' num2str(snap_T_interval) ...
     ' ' num2str(snap_T_time_interval) ' 10000 T']);
