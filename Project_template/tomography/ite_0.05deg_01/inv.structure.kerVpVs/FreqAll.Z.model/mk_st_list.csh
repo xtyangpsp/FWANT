@@ -2,8 +2,8 @@
 # generate the inv_st_list and inv_et_list used in ambient noise tomography
 #
 
-set ite = ite_0.05deg_01
-set wkdir = /home/xtyang/depot-projects/xtyang/craton/$ite
+set ite = ite_0.05deg_04
+set wkdir = /home/xtyang/depot-projects/xtyang/WNACraton/$ite
 set kendir = $wkdir/sim.kernel
 set targetdir = $wkdir/inv.structure.kerVpVs/FreqAll.Z.model
 set stnlst = $targetdir/inv_st_list
@@ -12,22 +12,18 @@ set tmplst = $targetdir/tmplst
 set uniqsrclst = $targetdir/tmplst2
 
 cat /dev/null > $stnlst
+cat /dev/null > $tmplst
+
 cd $kendir
 @ ii=0
 foreach conf (`/bin/ls *_conf`)
 @ ii = $ii + 1
 set stn = `echo $conf | awk -F_ '{print $1}'`
+echo $stn $ii
 echo $stn $ii >> $stnlst
-end
 
-cat /dev/null > $tmplst
-foreach rcvstn (`cat $stnlst | awk '{print $1}'` )
-cd $rcvstn
-foreach srcstn (`/bin/ls -d *.*`)
-echo $srcstn
-echo $srcstn >> $tmplst
-end
-cd ..
+#get event list. will sort to unique later
+grep "synthetic" $conf | grep "/BHZ/" | sed -e 's/\// /g'|awk '{print $3}' >> $tmplst
 end
 
 cat $tmplst | sort | uniq > $uniqsrclst
