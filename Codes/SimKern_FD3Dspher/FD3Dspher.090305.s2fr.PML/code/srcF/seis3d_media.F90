@@ -867,7 +867,7 @@ integer :: nwater
 
 real(SP) :: x0,y0,z0,d0,x1,y1,z1,z2
 integer :: nsamp
-integer :: i,j,k,mi,mj,mk,n,m
+integer :: i,ii,j,k,mi,mj,mk,n,m
 integer :: i1,i2,j1,j2,k1,k2,k0,n1,n2
 integer :: indx(1)
 
@@ -894,16 +894,16 @@ do i=ni1,ni2
    xvec(0)=x(i); yvec(0)=y(j); zvec(0)=z(k)
 
    dx1=(x(i)-x(i-1))/2.0/(NGRIDX+1); dx2=(x(i+1)-x(i))/2.0/(NGRIDX+1)
-   xvec(-NGRIDX:-1)=(/-NGRIDX:-1/)*dx1+x(i);
-   xvec(1:NGRIDX)  =(/ 1:NGRIDX /)*dx2+x(i)
+   xvec(-NGRIDX:-1)=(/(ii, ii=-NGRIDX,-1,1)/)*dx1+x(i);
+   xvec(1:NGRIDX)  =(/(ii, ii=1,NGRIDX,1)/)*dx2+x(i)
 
    dy1=(y(j)-y(j-1))/2.0/(NGRIDY+1); dy2=(y(j+1)-y(j))/2.0/(NGRIDY+1)
-   yvec(-NGRIDY:-1)=(/-NGRIDY:-1/)*dy1+y(j);
-   yvec( 1:NGRIDY )=(/ 1:NGRIDY /)*dy2+y(j)
+   yvec(-NGRIDY:-1)=(/(ii, ii=-NGRIDY,-1,1)/)*dy1+y(j);
+   yvec( 1:NGRIDY )=(/(ii, ii=1,NGRIDY,1)/)*dy2+y(j)
 
    dz1=(z(k)-z(k-1))/2.0/(NGRIDZ+1); dz2=(z(k+1)-z(k))/2.0/(NGRIDZ+1)
-   zvec(-NGRIDZ:-1)=(/-NGRIDZ:-1/)*dz1+z(k);
-   zvec( 1:NGRIDZ )=(/ 1:NGRIDZ /)*dz2+z(k)
+   zvec(-NGRIDZ:-1)=(/(ii, ii=-NGRIDZ,-1,1)/)*dz1+z(k);
+   zvec( 1:NGRIDZ )=(/(ii, ii=1,NGRIDZ,1) /)*dz2+z(k)
 
 do mk=-NGRIDZ,NGRIDZ
    if (NGRIDZ/=0 .and. mk==0) cycle
@@ -1607,7 +1607,7 @@ integer :: i,j,k
    end do
    end do
    end do
-   write(*,"(a,3i5,a,f,a,3i5,a,2f)") "   dtmax in thread", n_i,n_j,n_k, " is", dtmax,  &
+   write(*,"(a,3i5,a,f8.5,a,3i5,a,2g)") "   dtmax in thread", n_i,n_j,n_k, " is", dtmax,  &
        " located on", dtindx," with Vp and dL", dtmaxVp,dtmaxL
 end subroutine media_stept_check
 

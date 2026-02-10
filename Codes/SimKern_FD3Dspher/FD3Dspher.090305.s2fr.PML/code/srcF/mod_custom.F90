@@ -23,7 +23,7 @@ contains
 subroutine custom_media(x,y,z,vp,vs,dens,Qatt,Qf0,model)
 real(SP),intent(in) :: x,y,z
 real(SP),dimension(2),intent(out) :: Vp,Vs,dens,Qatt
-real,intent(out) :: Qf0
+real(SP),intent(out) :: Qf0
 character (len=*),intent(in) :: model
 select case (trim(model))
 case ('ak135')
@@ -37,13 +37,13 @@ end select
 end subroutine custom_media
 
 subroutine custom_media_ESG2006(x,y,z,vp,vs,dens,Qatt,Qf0)
-real,intent(in) :: x,y,z
-real,dimension(2),intent(out) :: Vp,Vs,dens,Qatt
-real,intent(out) :: Qf0
+real(SP),intent(in) :: x,y,z
+real(SP),dimension(2),intent(out) :: Vp,Vs,dens,Qatt
+real(SP),intent(out) :: Qf0
 
 !bechmark2 of ESG2006
-real x0,y0,z0
-real D
+real(SP) x0,y0,z0
+real(SP) D
 
 x0=x;y0=y;z0=z
 z0=z0
@@ -68,14 +68,14 @@ Qatt  = 50
 end subroutine custom_media_ESG2006
 
 subroutine custom_media_ak135(x,y,z,vp,vs,dens,Qatt,Qf0)
-real,intent(in) :: x,y,z
-real,dimension(2),intent(out) :: Vp,Vs,dens,Qatt
-real,intent(out) :: Qf0
+real(SP),intent(in) :: x,y,z
+real(SP),dimension(2),intent(out) :: Vp,Vs,dens,Qatt
+real(SP),intent(out) :: Qf0
 
-real,dimension(2,10) :: alpha,beta,rho,Q
-real,dimension(10) :: H
+real(SP),dimension(2,10) :: alpha,beta,rho,Q
+real(SP),dimension(10) :: H
 integer,dimension(1) :: p
-real L1,L2
+real(SP) L1,L2
 
 integer n,k1,k2
 
@@ -165,11 +165,11 @@ call custom_media_perturb(x,y,z,Vp,Vs,dens,Qatt)
 end subroutine custom_media_ak135
 
 subroutine custom_media_perturb(x,y,z,Vp,Vs,dens,Qatt)
-real,intent(in) :: x,y,z
-real,dimension(2),intent(out) :: Vp,Vs,dens,Qatt
+real(SP),intent(in) :: x,y,z
+real(SP),dimension(2),intent(out) :: Vp,Vs,dens,Qatt
 
-real x0,y0,z0,dx,dy,dz
-real fct
+real(SP) x0,y0,z0,dx,dy,dz
+real(SP) fct
 
 fct=0.05
 x0=400e3; y0=200e3; z0=-750;

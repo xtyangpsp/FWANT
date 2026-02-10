@@ -28,7 +28,7 @@ implicit none
 
 !-----------------------------------------------------------------------------
 
-real,allocatable :: gx(:),gy(:),gz(:)
+real(SP),allocatable :: gx(:),gy(:),gz(:)
 character (len=SEIS_STRLEN) :: filenm
 
 integer :: ierr
@@ -92,7 +92,7 @@ character (len=*),intent(in) :: fnm_conf
 character (len=SEIS_STRLEN) :: str
 real(SP),dimension(SEIS_GEO) :: dh,xyz0
 integer :: fid,i,j,k,n,n1,n2,n3
-real :: d2m
+real(SP) :: d2m
 fid=1001
 open(fid,file=trim(fnm_conf),status="old")
 
@@ -102,7 +102,7 @@ open(fid,file=trim(fnm_conf),status="old")
      call string_conf(fid,1,'theta0_phi0_rmax',n+1,xyz0(n))
   end do
   !x
-  if (abs(dh(1)>=SEIS_ZERO)) then
+  if (abs(dh(1)) >= SEIS_ZERO) then
      do i=nx1,num_x
         gx(i)=(i-ni1)*dh(1)+xyz0(1)
      end do
@@ -112,7 +112,7 @@ open(fid,file=trim(fnm_conf),status="old")
      read(fid,*) ( gx(i),i=ni1,n1+ni1-1 )
   end if
   !y
-  if (abs(dh(2)>=SEIS_ZERO)) then
+  if (abs(dh(2))>=SEIS_ZERO) then
      do j=ny1,num_y
         gy(j)=(j-nj1)*dh(2)+xyz0(2)
      end do
@@ -122,7 +122,7 @@ open(fid,file=trim(fnm_conf),status="old")
      read(fid,*) ( gy(j),j=nj1,n2+nj1-1 )
   end if
   !z
-  if (abs(dh(3)>=SEIS_ZERO)) then
+  if (abs(dh(3))>=SEIS_ZERO) then
      do k=nz1,num_z
         gz(k)=(k-num_z+LenFD)*dh(3)+xyz0(3)
      end do

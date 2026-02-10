@@ -165,7 +165,8 @@ end if
 end subroutine nfseis_snap_def
 subroutine nfseis_snap_defvar(ncid,varnm,vid)
 character (len=*),intent(in) :: varnm
-integer,intent(out) :: ncid,vid
+integer,intent(in) :: ncid
+integer,intent(out) :: vid
 integer ierr,tdimid,xdimid,ydimid,zdimid
 ierr=nf90_inq_dimid(ncid,'time',tdimid)
      call nfseis_except(ierr,'time dim in snap_addvar')

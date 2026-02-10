@@ -28,7 +28,7 @@ implicit none
 
 !-----------------------------------------------------------------------------
 
-real,allocatable :: gx(:),gy(:),gz(:),gxsin(:),gxcot(:), &
+real(SP),allocatable :: gx(:),gy(:),gz(:),gxsin(:),gxcot(:), &
      x_xi(:),y_eta(:),z_zeta(:)
 character (len=SEIS_STRLEN) :: filenm
 

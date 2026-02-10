@@ -269,7 +269,7 @@ integer n
 integer,optional :: width
 character (len=SEIS_STRLEN) :: str,fmt_str
 if (present(width)) then
-   write(str,"(i)") width
+   write(str,"(i0)") width
    fmt_str="(i"//trim(str)//"."//trim(str)//")"
 else
    fmt_str="(i3.3)"

@@ -737,11 +737,11 @@ end function seismo_on_this
 subroutine retrieve_recvline(fnm_nc,id,vnm,V,nts,ntc,ntt,T)
 character (len=*),intent(in) :: fnm_nc,vnm
 integer,intent(in) :: id,nts,ntc,ntt
-real,dimension(:),intent(out) :: V
-real,dimension(:),optional,intent(out) :: T
+real(SP),dimension(:),intent(out) :: V
+real(SP),dimension(:),optional,intent(out) :: T
 
 integer numt
-
+V = 0.0_SP
 call nfseis_diminfo(fnm_nc,'time',numt)
 if (numt<1) then
    print *, trim(fnm_nc), ' no data'
@@ -762,7 +762,7 @@ end subroutine retrieve_recvline
 subroutine retrieve_snap_seis(fnm_prefix,i,j,k,varnm,var,num_nt)
 character (len=*),intent(in) :: fnm_prefix,varnm
 integer,intent(in) :: i,j,k,num_nt
-real,dimension(:),intent(out) :: var
+real(SP),dimension(:),intent(out) :: var
 character (len=SEIS_STRLEN) :: filenm
 
 integer m,n,mt
@@ -783,7 +783,7 @@ end do
 end subroutine retrieve_snap_seis
 subroutine retrieve_snap_time(fnm_prefix,T,num_nt)
 character (len=*),intent(in) :: fnm_prefix
-real,dimension(:),intent(out) :: T
+real(SP),dimension(:),intent(out) :: T
 integer,intent(in) :: num_nt
 character (len=SEIS_STRLEN) :: filenm
 
@@ -880,7 +880,7 @@ integer,intent(in) :: num
 integer,optional,intent(in) :: width
 character (len=SEIS_STRLEN) :: ioname,str,fmt_str
 if (present(width)) then
-   write(str,"(i)") width
+   write(str,"(i0)") width
    fmt_str="(i"//trim(str)//"."//trim(str)//")"
 else
    fmt_str="(i4.4)"

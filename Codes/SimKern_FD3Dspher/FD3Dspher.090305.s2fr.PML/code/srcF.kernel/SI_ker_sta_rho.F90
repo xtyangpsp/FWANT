@@ -116,7 +116,7 @@ real(SP),dimension(:,:,:),allocatable :: Kap,Kaq,Kbp,Kbq,Kcp,Kcq
 
 integer :: n_i,n_j,n_k
 integer :: blki,blkj,blkk
-integer :: i,j,k,m,n,mt,ierr,i1,i2,j1,j2,k1,k2
+integer :: i,ii,j,k,m,n,mt,ierr,i1,i2,j1,j2,k1,k2
 integer :: p(1)
 integer,dimension(SEIS_GEO) :: &
    bsubs,bsubc,bsubt,          &
@@ -280,7 +280,7 @@ call alloc_pick(num_pick)
 call alloc_seismo_var(knt)
 
 kdt=sub_gtinv*stept
-T=(/1:knt/)*kdt
+T=(/(ii, ii=1,knt,1)/)*kdt
 Tmin=kdt
 Tmax=knt*kdt
 

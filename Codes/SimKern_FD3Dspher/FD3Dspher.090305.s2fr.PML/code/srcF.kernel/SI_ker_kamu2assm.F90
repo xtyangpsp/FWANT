@@ -71,8 +71,8 @@ real(SP),dimension(:,:,:),allocatable :: &
 integer :: cur_bdap,cur_bdaq,cur_bdbp,cur_bdbq
 integer :: max_bdap,max_bdaq,max_bdbp,max_bdbq
 integer :: num_blk,max_pix
-real :: kap0,kaq0,kbp0,kbq0
-real :: Cap0,Caq0,Cbp0,Cbq0
+real(SP) :: kap0,kaq0,kbp0,kbq0
+real(SP) :: Cap0,Caq0,Cbp0,Cbq0
 real(SP),dimension(:),allocatable :: &
     Bap,Baq,Bbp,Bbq,                 &
     Sap,Saq,Sbp,Sbq,                 &
@@ -544,8 +544,8 @@ end function splash2underline
 
 subroutine export_G_compact(kerblk,ker0,filenm,cur_bdwid,max_bdwid)
 character (len=*),intent(in) :: filenm
-real,dimension(:),intent(in) :: kerblk
-real,intent(in) :: ker0
+real(SP),dimension(:),intent(in) :: kerblk
+real(SP),intent(in) :: ker0
 integer,intent(out) :: cur_bdwid
 integer,intent(inout) :: max_bdwid
 
@@ -578,16 +578,16 @@ character (len=SEIS_STRLEN) :: filenm
 fid=1002
 filenm=trim(pnm_spool)//'/'//'inv_G_band.conf'
 open(fid,file=trim(filenm),status='unknown')
-write(fid,"(a,i)") "max_band_width_Kap = ",max_bdap
-write(fid,"(a,i)") "max_band_width_Kaq = ",max_bdaq
-write(fid,"(a,i)") "max_band_width_Kbp = ",max_bdbp
-write(fid,"(a,i)") "max_band_width_Kbq = ",max_bdbq
+write(fid,"(a,i0)") "max_band_width_Kap = ",max_bdap
+write(fid,"(a,i0)") "max_band_width_Kaq = ",max_bdaq
+write(fid,"(a,i0)") "max_band_width_Kbp = ",max_bdbp
+write(fid,"(a,i0)") "max_band_width_Kbq = ",max_bdbq
 close(fid)
 end subroutine export_inv_info
 
 subroutine export_G_sum(kerval,filenm)
 character (len=*),intent(in) :: filenm
-real,dimension(:),intent(in) :: kerval
+real(SP),dimension(:),intent(in) :: kerval
 
 integer :: fid,m
 

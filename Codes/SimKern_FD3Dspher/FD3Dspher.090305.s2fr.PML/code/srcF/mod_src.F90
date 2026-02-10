@@ -7,7 +7,7 @@ module src_mod
 
 !*****************************************************************************
 !
-! $Date: 2009-01-16 12:46:39 -0500 (Fri, 16 Jan 2009) $
+! $Date: 2009-01-16 12:46:39 -0.0_SP0 (Fri, 16 Jan 2009) $
 ! $Revision: 64 $
 ! $LastChangedBy: zhangw $
 !
@@ -192,7 +192,7 @@ if (num_force>0) then
   !end do
 end if
 #ifdef VERBOSE
-  fid_out=9010
+  fid_out=90.0_SP
   open(fid_out,                                                                      &
        file='log_stf_'//trim(set_mpi_subfix(thisid(1),thisid(2),thisid(3)))//'.dat', &
        status='unknown')
@@ -320,7 +320,7 @@ do Li=-LenFD,LenFD
        .and. j<=nj2 .and. j>=nj1  &
        .and. k<=nk2 .and. k>=nk1 ) then
        V=(x(i+1)-x(i-1))*(y(j+1)-y(j-1))*(z(k+1)-z(k-1))/8.0*z(k)**2*xsin(i)
-       V=1.0/(V*rho(i,j,k))*d
+       V=1.0_SP/(V*rho(i,j,k))*d
        fx=fx0*V; fy=fy0*V; fz=fz0*V
 #ifdef SrcSurface
        if (freenode .and. k==nk2) cycle
@@ -459,7 +459,7 @@ case default
    print *, "Have you told me how to generate the SVF of ", flag_stf_type
    stop 1
 end select
-if (abs(rate)<SEIS_ZERO) rate=0.0
+if (abs(rate)<SEIS_ZERO) rate=0.0_SP
 end function src_svf
 function src_stf(t,t0,f0,flag_stf_type,ntime) result(disp)
 real(SP),intent(in) :: t,t0,f0
@@ -483,15 +483,15 @@ case default
    print *, "Have you told me how to generate the STF of ", flag_stf_type
    stop 1
 end select
-!if (abs(disp)<SEIS_ZERO) disp=0.0
+!if (abs(disp)<SEIS_ZERO) disp=0.0_SP
 end function src_stf
 
 ! gauss
 function fun_gauss(t,a,t0) result(f)
   real(SP),intent(in) :: t,t0,a
   real(SP) :: f
-  if (abs(t0)>=SEIS_ZERO .and. (t<=0.0 .or. t>=2.0*t0) ) then
-     f=0.0
+  if (abs(t0)>=SEIS_ZERO .and. (t<=0.0_SP .or. t>=2.0_SP*t0) ) then
+     f=0.0_SP
   else
      f=exp(-(t-t0)**2/(a**2))/(sqrt(PI)*a)
   end if
@@ -499,8 +499,8 @@ end function fun_gauss
 function fun_gauss_deriv(t,a,t0) result(f)
   real(SP),intent(in) :: t,t0,a
   real(SP) :: f
-  if (abs(t0)>=SEIS_ZERO .and. (t<=0.0 .or. t>=2.0*t0) ) then
-     f=0.0
+  if (abs(t0)>=SEIS_ZERO .and. (t<=0.0_SP .or. t>=2.0*t0) ) then
+     f=0.0_SP
   else
      f=exp(-(t-t0)**2/(a**2))/(sqrt(PI)*a)*(-2*(t-t0)/a**2)
   end if
@@ -509,103 +509,103 @@ end function fun_gauss_deriv
 function fun_ricker(t,fc,t0) result (v)
     real(SP),intent(in) :: t,t0,fc
     real(SP) :: u,f0,v
-    if (t<=0.0) then
-       v=0.0; return
+    if (t<=0.0_SP) then
+       v=0.0_SP; return
     end if
-    f0=sqrt(PI)/2.0
-    u=(t-t0)*2.0*PI*fc
-    v=(u**2.0/4.0-0.5)*exp(-u**2.0/4.0)*f0
+    f0=sqrt(PI)/2.0_SP
+    u=(t-t0)*2.0_SP*PI*fc
+    v=(u**2.0_SP/4.0_SP-0.5)*exp(-u**2.0/4.0)*f0
     !v=u*(1.5-u**2/4.0)*exp(-u**2.0/4.0)*f0*PI*fc
 end function fun_ricker
 function fun_ricker_deriv(t,fc,t0) result (v)
     real(SP),intent(in) :: t,t0,fc
     real(SP) :: u,f0,v
-    if (t<=0.0) then
-       v=0.0; return
+    if (t<=0.0_SP) then
+       v=0.0_SP; return
     end if
     f0=sqrt(PI)/2.0
     u=(t-t0)*2.0*PI*fc
     !f=(u**2.0/4.0-0.5)*exp(-u**2.0/4.0)*f0
-    v=u*(1.5-u**2/4.0)*exp(-u**2.0/4.0)*f0*PI*fc
+    v=u*(1.5_SP-u**2/4.0_SP)*exp(-u**2.0_SP/4.0_SP)*f0*PI*fc
 end function fun_ricker_deriv
 !bell
 function fun_bell(t,riset) result(v)
   real(SP),intent(in) :: t,riset
   real(SP) :: v
-  if (t>0.0 .and. t<riset) then
-     v=(1.0 - cos(2*PI*t/riset))/riset
+  if (t>0.0_SP .and. t<riset) then
+     v=(1.0_SP - cos(2*PI*t/riset))/riset
   else
-     v=0.0
+     v=0.0_SP
   end if
 end function fun_bell
 function fun_bell_deriv(t,riset) result(v)
-  real,intent(in) :: t,riset
-  real :: v
-  if (t>0.0 .and. t<riset) then
-     v=2.0*PI*sin(2*PI*t/riset)/riset
+  real(SP),intent(in) :: t,riset
+  real(SP) :: v
+  if (t>0.0_SP .and. t<riset) then
+     v=2.0_SP*PI*sin(2*PI*t/riset)/riset
   else
-     v=0.0
+     v=0.0_SP
   end if
 end function fun_bell_deriv
 function fun_bell_int(t,riset) result(v)
   real(SP),intent(in) :: t,riset
   real(SP) :: v
-  if (t<=0.0) then
-     v=0.0
+  if (t<=0.0_SP) then
+     v=0.0_SP
   elseif (t<riset) then
-     v=t/riset - sin(2*PI*t/riset)/(2.0*pi)
+     v=t/riset - sin(2*PI*t/riset)/(2.0_SP*pi)
   else
-     v=1.0
+     v=1.0_SP
   end if
 end function fun_bell_int
 !triangle
 function fun_triangle(t,riset) result(v)
   real(SP),intent(in) :: t,riset
   real(SP) :: t0,v
-  t0=riset/2.0;
+  t0=riset/2.0_SP;
   if (t>riset) then
-     v=0.0
+     v=0.0_SP
   elseif (t>t0) then
-     v=2.0/t0-t/(t0**2)
-  elseif (t>0.0) then
+     v=2.0_SP/t0-t/(t0**2)
+  elseif (t>0.0_SP) then
      v=t/(t0**2)
   else
-     v=0.0
+     v=0.0_SP
   end if
 end function fun_triangle
 function fun_triangle_int(t,riset) result(v)
   real(SP),intent(in) :: t,riset
   real(SP) :: t0,v
-  t0=riset/2.0;
+  t0=riset/2.0_SP;
   if (t>riset) then
-     v=1.0
+     v=1.0_SP
   elseif (t>t0) then
-     v=-0.5*t**2/(t0**2)+2.0*t/t0-1.0
-  elseif (t>0.0) then
-     v=0.5*t**2/(t0**2)
+     v=-0.5_SP*t**2/(t0**2)+2.0_SP*t/t0-1.0_SP
+  elseif (t>0.0_SP) then
+     v=0.5_SP*t**2/(t0**2)
   else
-     v=0.0
+     v=0.0_SP
   end if
 end function fun_triangle_int
 !bshift
 function fun_bshift(t,riset,t0) result(v)
     real(SP),intent(in) :: t,t0,riset
     real(SP) :: bshift,v
-    bshift=riset/2.0;
-    if (t>0.0 .and. t<riset) then
-       v=0.5/t0/(cosh((t-bshift)/t0)**2.0)
+    bshift=riset/2.0_SP;
+    if (t>0.0_SP .and. t<riset) then
+       v=0.5_SP/t0/(cosh((t-bshift)/t0)**2.0_SP)
     else
-       v=0.0
+       v=0.0_SP
     end if
 end function fun_bshift
 !step
 function fun_step(t) result(v)
     real(SP),intent(in) :: t
     real(SP) :: v
-    !if (t>=0.0 ) then
-       v=1.0
+    !if (t>=0.0_SP ) then
+       v=1.0_SP
     !else
-    !   v=0.0
+    !   v=0.0_SP
     !end if
 end function fun_step
 !delta
@@ -617,7 +617,7 @@ function fun_delta(t,ntime) result(v)
     if ( ntime == 0 ) then
        v=1.0_SP/stept
     else
-       v=0.0
+       v=0.0_SP
     end if
 end function fun_delta
 

@@ -8,7 +8,7 @@ module macdrp_mod
 
 !*****************************************************************************
 !
-! $Date: 2009-01-16 11:57:10 -0500 (Fri, 16 Jan 2009) $
+! $Date: 2009-01-16 11:57:10 -0.0_SP0 (Fri, 16 Jan 2009) $
 ! $Revision: 59 $
 ! $LastChangedBy: zhangw $
 !
@@ -202,15 +202,15 @@ indx(:,2)=(/ ni1,ni2,nj2-LenFD+1,nj2,nk1+LenFD,nk2-LenFD /) ! y2
 indx(:,3)=(/ ni1,ni1+LenFD-1,nj1+LenFD,nj2-LenFD,nk1+LenFD,nk2-LenFD /) ! x1
 indx(:,4)=(/ ni2-LenFD+1,ni2,nj1+LenFD,nj2-LenFD,nk1+LenFD,nk2-LenFD /) ! x2
 ! rk coefficient
-firRKa=(/ RK4a2, RK4a3, RK4a4, 0.0 /)
+firRKa=(/ RK4a2, RK4a3, RK4a4, 0.0_SP /)
 firRKb=(/ RK4b1, RK4b2, RK4b3, RK4b4 /)
-!secRKa=(/ RK4a2, RK4a3, RK4a4, 0.0 /)
+!secRKa=(/ RK4a2, RK4a3, RK4a4, 0.0_SP /)
 !secRKb=(/ RK4b1, RK4b2, RK4b3, RK4b4 /)
-secRKa=(/ RK2a2, 0.0, 0.0, 0.0 /)
-secRKb=(/ RK2b1, RK2b2, 0.0, 0.0 /)
+secRKa=(/ RK2a2, 0.0_SP, 0.0_SP, 0.0_SP /)
+secRKb=(/ RK2b1, RK2b2, 0.0_SP, 0.0_SP /)
 ! mat to convert V,z
 #ifdef VERBOSE
-  fid_out=9050
+  fid_out=90.0_SP
   open(fid_out,                                                                      &
        file='log_maxval_'//trim(set_mpi_subfix(thisid(1),thisid(2),thisid(3)))//'.dat', &
        status='unknown')
@@ -916,12 +916,12 @@ do i=I1,I2
 
 #ifdef WATER
    if (miu<=SEIS_ZERO) then
-      DxTxy=0.0
-      DxTxz=0.0
-      DyTxy=0.0
-      DyTyz=0.0
-      DzTxz=0.0
-      DzTyz=0.0
+      DxTxy=0.0_SP
+      DxTxz=0.0_SP
+      DyTxy=0.0_SP
+      DyTyz=0.0_SP
+      DzTxz=0.0_SP
+      DzTyz=0.0_SP
    end if
 #endif
 
@@ -1090,12 +1090,12 @@ do i=I1,I2
 
 #ifdef WATER
    if (miu<=SEIS_ZERO) then
-      DxTxy=0.0
-      DxTxz=0.0
-      DyTxy=0.0
-      DyTyz=0.0
-      DzTxz=0.0
-      DzTyz=0.0
+      DxTxy=0.0_SP
+      DxTxz=0.0_SP
+      DyTxy=0.0_SP
+      DyTyz=0.0_SP
+      DzTxz=0.0_SP
+      DzTyz=0.0_SP
    end if
 #endif
 
@@ -1264,12 +1264,12 @@ do i=I1,I2
 
 #ifdef WATER
    if (miu<=SEIS_ZERO) then
-      DxTxy=0.0
-      DxTxz=0.0
-      DyTxy=0.0
-      DyTyz=0.0
-      DzTxz=0.0
-      DzTyz=0.0
+      DxTxy=0.0_SP
+      DxTxz=0.0_SP
+      DyTxy=0.0_SP
+      DyTyz=0.0_SP
+      DzTxz=0.0_SP
+      DzTyz=0.0_SP
    end if
 #endif
 
@@ -1439,12 +1439,12 @@ do i=I1,I2
 
 #ifdef WATER
    if (miu<=SEIS_ZERO) then
-      DxTxy=0.0
-      DxTxz=0.0
-      DyTxy=0.0
-      DyTyz=0.0
-      DzTxz=0.0
-      DzTyz=0.0
+      DxTxy=0.0_SP
+      DxTxz=0.0_SP
+      DyTxy=0.0_SP
+      DyTyz=0.0_SP
+      DzTxz=0.0_SP
+      DzTyz=0.0_SP
    end if
 #endif
 
@@ -1613,12 +1613,12 @@ do i=I1,I2
 
 #ifdef WATER
    if (miu<=SEIS_ZERO) then
-      DxTxy=0.0
-      DxTxz=0.0
-      DyTxy=0.0
-      DyTyz=0.0
-      DzTxz=0.0
-      DzTyz=0.0
+      DxTxy=0.0_SP
+      DxTxz=0.0_SP
+      DyTxy=0.0_SP
+      DyTyz=0.0_SP
+      DzTxz=0.0_SP
+      DzTyz=0.0_SP
    end if
 #endif
 
@@ -1787,12 +1787,12 @@ do i=I1,I2
 
 #ifdef WATER
    if (miu<=SEIS_ZERO) then
-      DxTxy=0.0
-      DxTxz=0.0
-      DyTxy=0.0
-      DyTyz=0.0
-      DzTxz=0.0
-      DzTyz=0.0
+      DxTxy=0.0_SP
+      DxTxz=0.0_SP
+      DyTxy=0.0_SP
+      DyTyz=0.0_SP
+      DzTxz=0.0_SP
+      DzTyz=0.0_SP
    end if
 #endif
 
@@ -1961,12 +1961,12 @@ do i=I1,I2
 
 #ifdef WATER
    if (miu<=SEIS_ZERO) then
-      DxTxy=0.0
-      DxTxz=0.0
-      DyTxy=0.0
-      DyTyz=0.0
-      DzTxz=0.0
-      DzTyz=0.0
+      DxTxy=0.0_SP
+      DxTxz=0.0_SP
+      DyTxy=0.0_SP
+      DyTyz=0.0_SP
+      DzTxz=0.0_SP
+      DzTyz=0.0_SP
    end if
 #endif
 
@@ -2135,12 +2135,12 @@ do i=I1,I2
 
 #ifdef WATER
    if (miu<=SEIS_ZERO) then
-      DxTxy=0.0
-      DxTxz=0.0
-      DyTxy=0.0
-      DyTyz=0.0
-      DzTxz=0.0
-      DzTyz=0.0
+      DxTxy=0.0_SP
+      DxTxz=0.0_SP
+      DyTxy=0.0_SP
+      DyTyz=0.0_SP
+      DzTxz=0.0_SP
+      DzTyz=0.0_SP
    end if
 #endif
 

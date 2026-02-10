@@ -258,7 +258,7 @@ call alloc_pick(num_pick)
 call alloc_seismo_var(knt)
 
 kdt=sub_gtinv*stept
-T=(/1:knt/)*kdt
+T=(/(ii, ii=1,knt,1)/)*kdt
 Tmin=kdt
 Tmax=knt*kdt
 
