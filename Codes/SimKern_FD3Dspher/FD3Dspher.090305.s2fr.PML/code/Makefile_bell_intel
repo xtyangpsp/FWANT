@@ -12,8 +12,8 @@
 #######################################################################
 #                 Compiler and macro flags setting                    #
 #######################################################################
-
-WHEREAMI := purdue_negishi
+CLUSTER := bell
+WHEREAMI := purdue_${CLUSTER}_intel
 # Please choose COMPILER in the included Makefile.opt.$(WHEREAMI)
 
 #DEBUG := ON
@@ -29,7 +29,7 @@ USEOMP :=ON
 
 USEPML := ON
 #WITHQS := ON
-#DataTypeDouble := ON
+DataTypeDouble := ON
 
 SrcSmooth :=ON
 SrcSurface := ON
@@ -52,10 +52,10 @@ DFLAGS := $(strip $(DFLAGS))
 #######################################################################
 #            directories, source files and target names               #
 #######################################################################
-skeldirs := OBJ bin src
-OBJDIR := ./OBJ
-BINDIR := ./bin
-SRCDIR := ./src
+skeldirs := OBJ_${CLUSTER} bin_${CLUSTER} src_${CLUSTER}
+OBJDIR := ./OBJ_${CLUSTER}
+BINDIR := ./bin_${CLUSTER}
+SRCDIR := ./src_${CLUSTER}
 FPPDIR := ./srcF
 
 SRC_MOD = mod_constants.f90 mod_math.f90 mod_string.f90 mod_nfseis.f90 \
