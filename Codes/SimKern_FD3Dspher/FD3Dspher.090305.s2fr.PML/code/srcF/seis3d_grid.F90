@@ -34,7 +34,12 @@ character (len=SEIS_STRLEN) :: filenm
 integer :: ierr
 integer :: n,i,j,k,num_x,num_y,num_z,num_i,num_j,num_k
 integer :: n_i,n_j,n_k
-
+integer :: nf_type
+#ifdef DataTypeDouble
+    nf_type = nf90_double
+#else
+    nf_type = nf90_float
+#endif
 !-----------------------------------------------------------------------------
 
 call get_conf_name(fnm_conf)
@@ -167,9 +172,10 @@ ierr=nf90_def_dim(ncid, 'J', ny, yid);     call nfseis_handle_err(ierr)
 ierr=nf90_def_dim(ncid, 'K', nz, zid);     call nfseis_handle_err(ierr)
 
 ! -- variable
-ierr=nf90_def_var(ncid, 'x', nf90_float, (/ xid /), vid )
-ierr=nf90_def_var(ncid, 'y', nf90_float, (/ yid /), vid )
-ierr=nf90_def_var(ncid, 'z', nf90_float, (/ zid /), vid )
+ierr=nf90_def_var(ncid, 'x', nf_type, (/ xid /), vid )
+ierr=nf90_def_var(ncid, 'y', nf_type, (/ yid /), vid )
+ierr=nf90_def_var(ncid, 'z', nf_type, (/ zid /), vid )
+
 !--
 ierr=nf90_enddef(ncid)
 !--
