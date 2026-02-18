@@ -1,0 +1,27 @@
+#============================================================
+# Makefile options for purdue_gautschi_intel (Intel MPI only)
+#============================================================
+
+FC      = mpiifort
+CC      = mpiicc
+
+# NetCDF (Intel builds)
+NETCDF_FORTRAN_INC = /apps/spack/gautschi-cpu/apps/netcdf-fortran/4.6.1-oneapi-2024.1.0-yqnhdx4/include
+NETCDF_FORTRAN_LIB = /apps/spack/gautschi-cpu/apps/netcdf-fortran/4.6.1-oneapi-2024.1.0-yqnhdx4/lib
+NETCDF_C_LIB       = /apps/spack/gautschi-cpu/apps/netcdf-c/4.9.2-oneapi-2024.1.0-xmjnu3i/lib
+HDF5_DIR = /apps/spack/gautschi-cpu/apps/hdf5/1.14.3-oneapi-2024.1.0-s2a3rq7
+HDF5_LIB = $(HDF5_DIR)/lib
+
+# Compile flags (note: -c restored here)
+FFLAGS  = -O3 -ftz -align records -no-prec-div -unroll1 -D_GNU_SOURCE \
+          -module ./OBJ_$(CLUSTER) -I$(NETCDF_FORTRAN_INC) -c -zero
+CFLAGS  = -O3
+
+# Link flags: Intel MPI wrappers add MPI libs; add only NetCDF
+LDFLAGS = -L$(NETCDF_FORTRAN_LIB) -Wl,-rpath,$(NETCDF_FORTRAN_LIB) -lnetcdff \
+          -L$(NETCDF_C_LIB)       -Wl,-rpath,$(NETCDF_C_LIB)       -lnetcdf \
+          -L$(HDF5_LIB)           -Wl,-rpath,$(HDF5_LIB)           -lhdf5_hl -lhdf5 -lz
+#LDFLAGS = -L$(NETCDF_FORTRAN_LIB) -lnetcdff \
+#          -L$(NETCDF_C_LIB)       -lnetcdf \
+#	  -L$(HDF5_LIB)           -lhdf5_hl -lhdf5 -lz
+
