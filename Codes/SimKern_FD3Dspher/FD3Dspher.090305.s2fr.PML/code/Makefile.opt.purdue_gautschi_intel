@@ -6,11 +6,23 @@ FC      = mpiifort
 CC      = mpiicc
 
 # NetCDF (Intel builds)
-NETCDF_FORTRAN_INC = /apps/spack/gautschi-cpu/apps/netcdf-fortran/4.6.1-oneapi-2024.1.0-yqnhdx4/include
-NETCDF_FORTRAN_LIB = /apps/spack/gautschi-cpu/apps/netcdf-fortran/4.6.1-oneapi-2024.1.0-yqnhdx4/lib
-NETCDF_C_LIB       = /apps/spack/gautschi-cpu/apps/netcdf-c/4.9.2-oneapi-2024.1.0-xmjnu3i/lib
-HDF5_DIR = /apps/spack/gautschi-cpu/apps/hdf5/1.14.3-oneapi-2024.1.0-s2a3rq7
-HDF5_LIB = $(HDF5_DIR)/lib
+# Use the environment variables set by 'module load'
+NETCDF_FORTRAN_INC = $(NETCDF_FORTRAN_HOME)/include
+NETCDF_FORTRAN_LIB = $(NETCDF_FORTRAN_HOME)/lib
+NETCDF_C_LIB       = $(NETCDF_HOME)/lib
+HDF5_LIB           = $(HDF5_HOME)/lib
+
+#NETCDF_FORTRAN_INC = /apps/spack/gautschi-cpu/apps/netcdf-fortran/4.6.1-oneapi-2024.1.0-yqnhdx4/include
+#NETCDF_FORTRAN_LIB = /apps/spack/gautschi-cpu/apps/netcdf-fortran/4.6.1-oneapi-2024.1.0-yqnhdx4/lib
+#NETCDF_C_LIB       = /apps/spack/gautschi-cpu/apps/netcdf-c/4.9.2-oneapi-2024.1.0-xmjnu3i/lib
+#HDF5_DIR = /apps/spack/gautschi-cpu/apps/hdf5/1.14.3-oneapi-2024.1.0-s2a3rq7
+#HDF5_LIB = $(HDF5_DIR)/lib
+
+# Define the Intel Compiler Library path
+INTEL_ROOT = /apps/external/intel-oneapi/2024.1
+INTEL_COMP_LIB = $(INTEL_ROOT)/compiler/2024.1/lib
+I_MPI_LIB = $(INTEL_ROOT)/mpi/2021.12/lib
+I_MPI_LIB_FABRIC = $(I_MPI_LIB)/fabric
 
 # Compile flags (note: -c restored here)
 FFLAGS  = -O3 -ftz -align records -no-prec-div -unroll1 -D_GNU_SOURCE \
@@ -18,10 +30,10 @@ FFLAGS  = -O3 -ftz -align records -no-prec-div -unroll1 -D_GNU_SOURCE \
 CFLAGS  = -O3
 
 # Link flags: Intel MPI wrappers add MPI libs; add only NetCDF
-LDFLAGS = -L$(NETCDF_FORTRAN_LIB) -Wl,-rpath,$(NETCDF_FORTRAN_LIB) -lnetcdff \
+LDFLAGS = -L$(I_MPI_LIB) -Wl,-rpath,$(I_MPI_LIB) \
+          -L$(I_MPI_LIB_FABRIC) -Wl,-rpath,$(I_MPI_LIB_FABRIC) \
+	  -L$(NETCDF_FORTRAN_LIB) -Wl,-rpath,$(NETCDF_FORTRAN_LIB) -lnetcdff \
           -L$(NETCDF_C_LIB)       -Wl,-rpath,$(NETCDF_C_LIB)       -lnetcdf \
-          -L$(HDF5_LIB)           -Wl,-rpath,$(HDF5_LIB)           -lhdf5_hl -lhdf5 -lz
-#LDFLAGS = -L$(NETCDF_FORTRAN_LIB) -lnetcdff \
-#          -L$(NETCDF_C_LIB)       -lnetcdf \
-#	  -L$(HDF5_LIB)           -lhdf5_hl -lhdf5 -lz
+          -L$(HDF5_LIB)           -Wl,-rpath,$(HDF5_LIB)           -lhdf5_hl -lhdf5 -lz \
+	  -L$(INTEL_COMP_LIB)     -Wl,-rpath,$(INTEL_COMP_LIB)
 

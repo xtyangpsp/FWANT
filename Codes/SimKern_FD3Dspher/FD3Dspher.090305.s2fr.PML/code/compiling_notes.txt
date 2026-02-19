@@ -1,0 +1,8 @@
+Run these lines before running make:
+module --force purge
+ml intel/2024.1 impi/2021.12 hdf5/1.14.3 netcdf-c/4.9.2 netcdf-fortran/4.6.1
+
+Make sure cleanup old runs before recompile:
+make -f Makefile_gautschi cleanall
+make -f Makefile_gautschi
+

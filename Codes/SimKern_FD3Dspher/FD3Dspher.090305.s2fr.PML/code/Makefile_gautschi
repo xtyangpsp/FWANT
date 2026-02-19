@@ -40,6 +40,16 @@ CondFreeTIMG := ON
 CondFreeVLOW := ON
 #CondFreeVEXT := ON
 
+# --- NEW LOGIC: Precision Tagging ---
+ifeq ($(DataTypeDouble), ON)
+    PREC := DP
+else
+    PREC := SP
+endif
+
+# Append precision to the cluster tag for directory names
+TAG := ${CLUSTER}_${PREC}
+
 DFLAG_LIST := DEBUG STATIC GETARG VERBOSE CheckOverFlow \
 			  MPITOPO1D USEOMP MPIBARRIER MPIBuffered DataTypeDouble \
               USEPML WITHQS SrcSmooth SrcSurface \
@@ -52,10 +62,10 @@ DFLAGS := $(strip $(DFLAGS))
 #######################################################################
 #            directories, source files and target names               #
 #######################################################################
-skeldirs := OBJ_${CLUSTER} bin_${CLUSTER} src_${CLUSTER}
-OBJDIR := ./OBJ_${CLUSTER}
-BINDIR := ./bin_${CLUSTER}
-SRCDIR := ./src_${CLUSTER}
+skeldirs := OBJ_${TAG} bin_${TAG} src_${TAG}
+OBJDIR := ./OBJ_${TAG}
+BINDIR := ./bin_${TAG}
+SRCDIR := ./src_${TAG}
 FPPDIR := ./srcF
 
 SRC_MOD = mod_constants.f90 mod_math.f90 mod_string.f90 mod_nfseis.f90 \
