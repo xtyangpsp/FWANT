@@ -53,7 +53,7 @@ v_search_grid = 0.2:0.01:2.0; %velocity range for velocity analysis to decide th
 model_grid_spacing=0.00001; 
 
 %plot control
-fig_flag = 1;  
+fig_flag = 0;  %turn off for parfor.
 save_fig=0;
 
 %save the measured phase delay or not.
@@ -218,8 +218,9 @@ parfor ii = 1:nsource
         egf_sub_neg = flipud(d_N_sub.value{1}.(egf_comp).data) .* w_taper_egf;
 
         % Define general shared window
-        tmin0 = dist / max(best_v_source);
-        tmin = max(0.9 * d_taper_time, tmin0 - 3 * tfmin(1));
+        tmin_arrival_all = dist / max(best_v_source);
+        
+        tmin = max(0.9 * d_taper_time, tmin_arrival_all - 3 * tfmin(1));
         tmax = min(tmaximum, dist / min(best_v_source) + 3.5 * max(tfmin));
         
         ttuni = 0:dt_resample:tmaximum;
@@ -230,7 +231,7 @@ parfor ii = 1:nsource
         
         snr_pos = zeros(nfb, 1); snr_neg = zeros(nfb, 1);
         t1_band = zeros(nfb, 1); t2_band = zeros(nfb, 1);
-
+        snr=nan(nfb,1);
         for k = 1:nfb
             [b, a] = butter(N, [fband(k,1) fband(k,2)] / (1/dt_egf/2));
             f_pos = filtfilt(b, a, egf_pos);
@@ -239,7 +240,9 @@ parfor ii = 1:nsource
             % Refined window for SNR and measurement
             t_center = dist / best_v_source(k);
             t1_band(k) = t_center - 3.0 * tfmin(k);
+            if t1_band(k) <dt_resample; t1_band(k)=dt_resample;end
             t2_band(k) = t_center + 3.0 * tfmin(k);
+            if t2_band(k) > tmaximumegf; t2_band(k) = tmaximumegf;end
             it_sig = round(t1_band(k)/dt_egf):round(t2_band(k)/dt_egf);
             it_sig = it_sig(it_sig > 0 & it_sig <= length(f_pos));
             
@@ -261,10 +264,7 @@ parfor ii = 1:nsource
             w_p = snr_p^2 / (snr_p^2 + snr_n^2);
             w_n = snr_n^2 / (snr_p^2 + snr_n^2);
             combined_f = w_p * f_pos + w_n * f_neg;
-            
-            % get SNR for combined data.
-            snr(k) = max(abs(combined_f(it_sig))) / rms(combined_f(n_idx));
-
+           
             % Apply to stacks and resample
             egffb_weighted(:,k) = interp1(taxis_egf, combined_f, ttuni, 'linear', 0);
             
@@ -279,6 +279,9 @@ parfor ii = 1:nsource
                 combined_sub = w_p * f_sub_p + w_n * f_sub_n;
                 egffb_sub_weighted(:,im,k) = interp1(taxis_egf, combined_sub, ttuni, 'linear', 0);
             end
+
+            % get SNR for combined data.
+            snr(k) = max(abs(combined_f(it_sig))) / rms(combined_f(n_idx));
         end
 
         % Prepare segments for measurement
@@ -287,13 +290,15 @@ parfor ii = 1:nsource
         synsig = synfb(itmin:itmax, :);
         egfsubstacksig = egffb_sub_weighted(itmin:itmax, :, :);
         ntsig = size(egfsig, 1);
-        
-        maxdelay = min(max_dV * tmin0, max_dT);
-        maxlag = round(maxdelay/dt_resample);
+       
+        maxdelay_allband = min(max_dV * tmin_arrival_all, max_dT);
+        maxlag = round(maxdelay_allband/dt_resample);
         ttc = (-maxlag:maxlag)*dt_resample;
-        phase = nan(nfb,1); phaseerr = nan(nfb,1); rxc = nan(nfb,1); snr = nan(nfb,1);
+        phase = nan(nfb,1); phaseerr = nan(nfb,1); 
+        rxc = nan(nfb,1); 
+        synshift=synsig;
         ec=zeros(nfb,1);
-        xc=[];
+        xc=nan(length(ttc),nfb);
         for k = 1:nfb
             t1_rel = t1_band(k) - tmin;
             t2_rel = t2_band(k) - tmin;
@@ -307,7 +312,7 @@ parfor ii = 1:nsource
             s_win = synsig(:,k) .* w_win;
             
             [xc(:,k), lags] = xcorr(d_win, s_win, maxlag);
-            [xc_val, i_max] = max(xc(:,k));
+            [~, i_max] = max(xc(:,k));
             
             % Correction for ellipticity
             ec(k) = (dist - geo2dist_ellipse(d_N.value{1}.(egf_comp).lat(1),d_N.value{1}.(egf_comp).lon(1),...
@@ -331,33 +336,44 @@ parfor ii = 1:nsource
             %%% that the source & receiver are not exactly on grids and interpolation is needed.
             %%% assuming data errors and synthetic errors are independent
             phaseerr(k) = sqrt((std(phasem)/sqrt(nsubstack) + dt_resample)^2 + synerr^2);
-            rxc(k) = xc_val / (norm(d_win)*norm(s_win));
+
+            % cross-correlation coefficient
+            itshift=round(phase(k)/dt_resample);
+            if itshift > 0
+                synshift(1:itshift,k)=0;
+                synshift(itshift+1:ntsig,k)=synsig(1:ntsig-itshift,k);
+            elseif itshift < 0
+                synshift(ntsig+itshift:ntsig,k)=0;
+                synshift(1:ntsig+itshift,k)=synsig(-itshift+1:ntsig,k);
+            end
+            rxc_temp=corrcoef(egfsig(:,k),synshift(:,k));
+            rxc(k)=rxc_temp(1,2);
         end
 
         if fig_flag
             figure('Position',[100 0 1100 800]);
             for k = 1:nfb
                 subplot(nfb, 2, 2*k-1); hold on;
-                plot(ttuni, synfb(:,k)/max(abs(synfb(:,k))), 'r', 'LineWidth', 1.2);
+                plot(ttuni(itmin:itmax), synshift(:,k)/max(abs(synshift(:,k))), 'r', 'LineWidth', 1.2);
                 plot(ttuni, egffb_weighted(:,k)/max(abs(egffb_weighted(:,k))), 'k');
                 line([t1_band(k) t1_band(k)], [-1 1], 'Color', 'm', 'LineStyle', '--');
                 line([t2_band(k) t2_band(k)], [-1 1], 'Color', 'm', 'LineStyle', '--');
                 xlim([tmin tmax]); ylabel([num2str(fband(k,1)) '-' num2str(fband(k,2)) 'Hz']);
-                if k==1; legend('Syn','SNR-Weighted EGF'); end
+                if k==1; legend('Syn','Combined EGF'); end
                 box on;
                 axis on;
                 
                 subplot(nfb, 2, 2*k);
                 plot(ttc+ec(k),xc(:,k)/max(abs(xc(:,k))),'k-');hold on % for ellipticity correction
                 plot(phase(k),1,'rv'); hold on
-                text(-maxdelay+0.005,0.3,['lag: ' num2str(phase(k),3) '+/-' num2str(phaseerr(k),2)],'FontSize',10);hold on
-                text(-maxdelay+0.005,-0.3,['xcoeff: ' num2str(rxc(k),2)],'FontSize',10); hold on
-                text(-maxdelay+0.005,-0.9,['snr: ' num2str(snr(k),3)],'FontSize',10);hold on
+                text(-maxdelay_allband+0.005,0.3,['lag: ' num2str(phase(k),3) '+/-' num2str(phaseerr(k),2)],'FontSize',10);hold on
+                text(-maxdelay_allband+0.005,-0.3,['xcoeff: ' num2str(rxc(k),2)],'FontSize',10); hold on
+                text(-maxdelay_allband+0.005,-0.9,['snr: ' num2str(snr(k),3)],'FontSize',10);hold on
 
                 % limiting phase < 0.95*maxdelay avoid measurements at 
                 % the boundries of the time window,which are likely unreliable
                 if rxc(k) >= xcoeff_cutoff && snr(k) >= snr_cutoff && snr(k) < verylargenumber && ...
-                        abs(phase(k)) <= min_wavelength*maxdelay && tmin0 >= tfmin(k) 
+                        abs(phase(k)) <= min_wavelength*maxdelay_allband && tmin_arrival_all >= tfmin(k) 
                     text(+0.011,-0.1,'thumbs UP','Color',[0 0 1]);hold on
                 else
                     text(+0.011,-0.1,'thumbs DOWN','Color',[1 0 0]); hold on
@@ -378,7 +394,7 @@ parfor ii = 1:nsource
 
         if save_delays
             for k = 1:nfb
-                if rxc(k) >= xcoeff_cutoff && snr(k) >= snr_cutoff && abs(phase(k)) <= min_wavelength*maxdelay
+                if rxc(k) >= xcoeff_cutoff && snr(k) >= snr_cutoff && abs(phase(k)) <= min_wavelength*maxdelay_allband
                     xcid=[char(src) '/bp' num2str(fband(k,1)) '_' num2str(fband(k,2)) '/' stnpair '_BHZ.P2.CORR.T1T2.SAC'];
                     fprintf(fidout,'%s %6.3f %2.0f %s %7.2f %7.2f %s %5.2f %5.2f %5.1f\n',...
                         xcid, phase(k), 1, 'RL', tmin+t1_band(k), tmin+t2_band(k), ['f' num2str(k)], phaseerr(k), rxc(k), snr(k)); 
