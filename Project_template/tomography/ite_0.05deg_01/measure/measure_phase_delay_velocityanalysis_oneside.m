@@ -88,7 +88,7 @@ if ~exist(plotdir,'dir'); system(['mkdir ' plotdir]); end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-parfor ii = 1:nsource
+for ii = 1:nsource
     source = sourcelist{ii};
     disp([num2str(ii),' --> ',source]);
     synfilelist=dir([syndir,'/',source,'/*',synfileext]);
@@ -179,12 +179,8 @@ parfor ii = 1:nsource
         end
     end
 
-    if save_delays
-        outfilename = [outdir '/' char(source) '.dat'];
-        if exist(outfilename,'file'); delete(outfilename); end
-        fidout = fopen(outfilename,'a+');
-    end
-
+    % result_strings collects output to avoid FID conflicts
+    result_strings = cell(npairs, 1);
     for n = 1:npairs
         synfile = synfilelist(n).name;
         stemp = strsplit(synfile(1:end - length(synfileext)), '.to.');
@@ -219,9 +215,9 @@ parfor ii = 1:nsource
 
         % Define general shared window
         tmin_arrival_all = dist / max(best_v_source);
-        
+        tmax_arrival_all = dist / min(best_v_source);
         tmin = max(0.9 * d_taper_time, tmin_arrival_all - 3 * tfmin(1));
-        tmax = min(tmaximum, dist / min(best_v_source) + 3.5 * max(tfmin));
+        tmax = min(tmaximum, tmax_arrival_all + 3.5 * max(tfmin));
         
         ttuni = 0:dt_resample:tmaximum;
         ntuni = length(ttuni);
@@ -239,10 +235,8 @@ parfor ii = 1:nsource
             
             % Refined window for SNR and measurement
             t_center = dist / best_v_source(k);
-            t1_band(k) = t_center - 3.0 * tfmin(k);
-            if t1_band(k) <dt_resample; t1_band(k)=dt_resample;end
-            t2_band(k) = t_center + 3.0 * tfmin(k);
-            if t2_band(k) > tmaximumegf; t2_band(k) = tmaximumegf;end
+            t1_band(k) = max(dt_resample,t_center - 3.0 * tfmin(k));
+            t2_band(k) = min(tmaximumegf, t_center + 3.0 * tfmin(k));
             it_sig = round(t1_band(k)/dt_egf):round(t2_band(k)/dt_egf);
             it_sig = it_sig(it_sig > 0 & it_sig <= length(f_pos));
             
@@ -291,14 +285,15 @@ parfor ii = 1:nsource
         egfsubstacksig = egffb_sub_weighted(itmin:itmax, :, :);
         ntsig = size(egfsig, 1);
        
-        maxdelay_allband = min(max_dV * tmin_arrival_all, max_dT);
-        maxlag = round(maxdelay_allband/dt_resample);
-        ttc = (-maxlag:maxlag)*dt_resample;
+        maxdelay_allband = min(max_dV * tmax_arrival_all, max_dT);
+        maxlag_npts = round(maxdelay_allband/dt_resample);
+        ttc = (-maxlag_npts:maxlag_npts)*dt_resample;
         phase = nan(nfb,1); phaseerr = nan(nfb,1); 
         rxc = nan(nfb,1); 
         synshift=synsig;
         ec=zeros(nfb,1);
         xc=nan(length(ttc),nfb);
+        current_pair_string="";
         for k = 1:nfb
             t1_rel = t1_band(k) - tmin;
             t2_rel = t2_band(k) - tmin;
@@ -311,7 +306,7 @@ parfor ii = 1:nsource
             d_win = egfsig(:,k) .* w_win;
             s_win = synsig(:,k) .* w_win;
             
-            [xc(:,k), lags] = xcorr(d_win, s_win, maxlag);
+            [xc(:,k), lags] = xcorr(d_win, s_win, maxlag_npts);
             [~, i_max] = max(xc(:,k));
             
             % Correction for ellipticity
@@ -323,7 +318,7 @@ parfor ii = 1:nsource
             phasem = zeros(nsubstack, 1);
             for im = 1:nsubstack
                 sub_win = egfsubstacksig(:,im,k) .* w_win;
-                [xc_sub, lags_sub] = xcorr(sub_win, s_win, maxlag);
+                [xc_sub, lags_sub] = xcorr(sub_win, s_win, maxlag_npts);
                 [~, i_sub] = max(xc_sub);
                 phasem(im) = lags_sub(i_sub) * dt_resample + ec(k);
             end
@@ -348,7 +343,17 @@ parfor ii = 1:nsource
             end
             rxc_temp=corrcoef(egfsig(:,k),synshift(:,k));
             rxc(k)=rxc_temp(1,2);
+
+            %form phase delay string:
+            if rxc(k) >= xcoeff_cutoff && snr(k) >= snr_cutoff && abs(phase(k)) <= min_wavelength*maxdelay_allband
+                xcid=[char(src) '/bp' num2str(fband(k,1)) '_' num2str(fband(k,2)) '/' stnpair '_BHZ.P2.CORR.T1T2.SAC'];
+                outstring=sprintf('%s %6.3f %2.0f %s %7.2f %7.2f %s %5.2f %5.2f %5.1f\n',...
+                    xcid, phase(k), 1, 'RL', tmin+t1_band(k), tmin+t2_band(k), ['f' num2str(k)], phaseerr(k), rxc(k), snr(k)); 
+                current_pair_string = current_pair_string + outstring;
+            end
         end
+
+        result_strings{n} = current_pair_string;
 
         if fig_flag
             figure('Position',[100 0 1100 800]);
@@ -386,21 +391,20 @@ parfor ii = 1:nsource
             sgtitle([strrep(stnpair,'_','-') ' | One-sided | ',num2str(1000*dist),' m']);
             if save_fig
                 saveas(gcf, fullfile(plotdir, [stnpair '.png']))
-            else
+            elseif isempty(getCurrentTask()) %if not in parfor worker.
                 pause
             end
             close all;
         end
-
-        if save_delays
-            for k = 1:nfb
-                if rxc(k) >= xcoeff_cutoff && snr(k) >= snr_cutoff && abs(phase(k)) <= min_wavelength*maxdelay_allband
-                    xcid=[char(src) '/bp' num2str(fband(k,1)) '_' num2str(fband(k,2)) '/' stnpair '_BHZ.P2.CORR.T1T2.SAC'];
-                    fprintf(fidout,'%s %6.3f %2.0f %s %7.2f %7.2f %s %5.2f %5.2f %5.1f\n',...
-                        xcid, phase(k), 1, 'RL', tmin+t1_band(k), tmin+t2_band(k), ['f' num2str(k)], phaseerr(k), rxc(k), snr(k)); 
-                end
+    end
+    if save_delays
+        outfilename = [outdir '/' char(source) '.dat'];
+        fidout = fopen(outfilename, 'w');
+        for n = 1:npairs
+            if ~isempty(result_strings{n})
+                fprintf(fidout, '%s', result_strings{n});
             end
         end
+        fclose(fidout);
     end
-    if save_delays; fclose(fidout); end
 end
