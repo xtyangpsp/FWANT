@@ -1,17 +1,31 @@
 #******************************************************************************#
-#*                         makefile of LSQR solver                            *#
+#* makefile of LSQR solver                             *#
+# To compile in double precision, run as: make DP=1
+# Default is in SP (for reading)
 #******************************************************************************#
 
-FC=ifort #
-FFLAG=-O3 #-static
-APP_NAME=solver_damp_smo_loc_yang
+FC=ifort 
+
+# Base optimized flags
+FFLAG_BASE=-O3 -xHost -ipo -heap-arrays -assume byterecl -g -traceback
+
+# Toggle Precision
+ifeq ($(DP), 1)
+    # Double Precision Mode
+    FFLAG = $(FFLAG_BASE) -fpp -DUSE_DP
+    APP_NAME = solver_DP
+else
+    # Single Precision Mode (Default)
+    FFLAG = $(FFLAG_BASE)
+    APP_NAME = solver_SP
+endif
+
 BIN_DIR=../bin/
 
 all:
-	${FC} -o ${APP_NAME} ${FFLAG} mod_LSQR.f90 solver_damp_smo_loc_yang.f90
+	${FC} -o ${APP_NAME} ${FFLAG} mod_LSQR.f90 solver_damp_smooth.f90
 	mkdir -p ${BIN_DIR}
 	cp ${APP_NAME} ${BIN_DIR}
 
 clean:
-	rm -f ${APP_NAME} ${BIN_DIR}${APP_NAME}
-
+	rm -f ${APP_NAME} ${BIN_DIR}solver_DP ${BIN_DIR}solver_SP
