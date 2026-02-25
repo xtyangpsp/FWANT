@@ -1,22 +1,42 @@
-#******************************************************************************#
-#*                         makefile of resolution test                        *#
-#******************************************************************************#
+######################################
+### ckb codes
+##Default is in SP (single precision, for kernal reading).
+## To compile in DP (double precision), run: make DP=1
+####################################
 
 FC=ifort
-FFLAG=-O3
 BIN_DIR=../bin/
 
+# Base Flags with Pre-processor support
+FFLAG_BASE=-O3 -xHost -heap-arrays -assume byterecl -fpp
+
+# Precision Toggle Logic
+ifeq ($(DP), 1)
+    FFLAG = $(FFLAG_BASE) -DUSE_DP
+    NAME_SYN = inv_ckb_synthetic_DP
+    NAME_INT = inv_ckb_integral_DP
+else
+    FFLAG = $(FFLAG_BASE)
+    NAME_SYN = inv_ckb_synthetic_SP
+    NAME_INT = inv_ckb_integral_SP
+endif
+
 all:
-	# Compile binaries
-	${FC} -o inv_ckb_integral ${FFLAG} inv_ckb_integral.f90
-	${FC} -o inv_ckb_synthetic ${FFLAG} inv_ckb_synthetic.f90
-	${FC} -o inv_make_ckb ${FFLAG} inv_make_ckb.f90
-	
+	# Compile binaries with the selected precision
+	${FC} -o ${NAME_INT} ${FFLAG} inv_ckb_integral.f90
+	${FC} -o ${NAME_SYN} ${FFLAG} inv_ckb_synthetic.f90
+	${FC} -o inv_make_ckb ${FFLAG_BASE} inv_make_ckb.f90
+
 	# Move to bin directory
 	mkdir -p ${BIN_DIR}
-	cp inv_ckb_integral inv_ckb_synthetic inv_make_ckb ${BIN_DIR}
+	cp ${NAME_INT} ${NAME_SYN} inv_make_ckb ${BIN_DIR}
 
+# Clean target to remove local and installed binaries
 clean:
-	rm -f inv_ckb_integral inv_ckb_synthetic inv_make_ckb
-	rm -f ${BIN_DIR}inv_ckb_integral ${BIN_DIR}inv_ckb_synthetic ${BIN_DIR}inv_make_ckb
+	rm -f inv_ckb_integral_SP inv_ckb_synthetic_SP
+	rm -f inv_ckb_integral_DP inv_ckb_synthetic_DP
+	rm -f inv_make_ckb
+	rm -f ${BIN_DIR}inv_ckb_integral_SP ${BIN_DIR}inv_ckb_synthetic_SP
+	rm -f ${BIN_DIR}inv_ckb_integral_DP ${BIN_DIR}inv_ckb_synthetic_DP
+	rm -f ${BIN_DIR}inv_make_ckb
 

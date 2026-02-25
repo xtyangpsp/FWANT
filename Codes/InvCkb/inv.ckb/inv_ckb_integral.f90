@@ -14,7 +14,7 @@ character (len=132) :: fnm_G,fnm_list,fnm_syn,fnm_ckb
 real(DP) :: ker_thres,data_thres
 real(DP) :: rhs,tmp
 real(SP) :: rhs_min,rhs_max
-real(SP),dimension(3) :: ker0
+!real(SP),dimension(3) :: ker0
 
 integer :: num_cmp, num_blk,num_mval
 
@@ -22,7 +22,14 @@ integer :: i,j,k,m,n,ncoef,nit,nael
 integer :: listid,fid,gid,ierr
 
 integer,dimension(:),allocatable :: indx0,indx
-real(SP),dimension(:),allocatable :: coef_sp
+#ifdef USE_DP
+    real(DP), dimension(3) :: ker0
+    real(DP), dimension(:), allocatable :: coef_sp
+#else
+    real(SP), dimension(3) :: ker0
+    real(SP), dimension(:), allocatable :: coef_sp
+#endif
+!real(SP),dimension(:),allocatable :: coef_sp
 real(DP),dimension(:),allocatable :: coef_dp
 real(DP),dimension(:),allocatable :: mval
 
@@ -87,7 +94,9 @@ list_loop: do
      if (ierr>0) call error_except("open kernel err:"//trim(fnm_G))
      read(gid) num_blk,ker0(k)
      read(gid) ncoef
-     read(gid) (indx0(nael+i),coef_sp(nael+i),i=1,ncoef)
+     read(gid) indx0(nael+1:nael+ncoef)
+     read(gid) coef_sp(nael+1:nael+ncoef)
+     !read(gid) (indx0(nael+i),coef_sp(nael+i),i=1,ncoef)
      close(gid)
 
      do i=1,ncoef
@@ -110,7 +119,7 @@ list_loop: do
   m=0
   do i=1,nael
      j=indx0(i)
-     tmp=real(coef_sp(i),DP)
+     tmp=real(coef_sp(i))
      if (dabs(tmp) > ker_thres)then
         m=m+1
         indx(m)=j
