@@ -12,8 +12,8 @@ do
 	#./clean_kernels.sh $sta
 	
 	echo $sta
-	#sbatch -A xtyang -t 4:00:00 ${sta}.assem
-	sbatch -A standby -t 3:00:00 ${sta}.assem
+	sbatch -t 2:00:00 ${sta}.assem
+	#sbatch -A standby -t 3:00:00 ${sta}.assem
 	sleep 0.05
 done
 

@@ -2,7 +2,8 @@
 #SBATCH -J synKN        #job name to remember
 #SBATCH -N 1    #number of CPU cores you request for the job
 #SBATCH -A xtyang  #queue to submit the job, our lab queue.
-#SBATCH --mem-per-cpu 2000      #requested memory per CPU
+#SBATCH -p cpu
+#SBATCH --mem-per-cpu 1990      #requested memory per CPU
 #SBATCH -t 10:00:00                      #requested time day-hour:minute
 #SBATCH -o %x.out  #path and name to save the output file.
 #SBATCH -e %x.err       #path to save the error file.

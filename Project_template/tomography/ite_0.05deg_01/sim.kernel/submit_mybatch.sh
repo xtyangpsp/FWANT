@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH -J sac        #job name to remember
+#SBATCH -J sac  #job name to remember
 #SBATCH -N 1    #number of CPU cores you request for the job
 #SBATCH -A xtyang  #queue to submit the job, our lab queue.
 #SBATCH --mem-per-cpu 2000      #requested memory per CPU
@@ -10,7 +10,7 @@
 echo "submitting matlab job"         
 
 # Load module, and set up environment for Matlab to run
-module load matlab
+module load matlab/R2024b
 
 unset DISPLAY
 

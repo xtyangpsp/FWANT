@@ -1,15 +1,20 @@
 #!/bin/bash
 #SBATCH -J KAJOBTEMPLATE
-#SBATCH -n 32
-#SBATCH -A standby
-#SBATCH --mem-per-cpu 2048
-#SBATCH -t 04:00:00     
+#SBATCH -n 1
+#SBATCH -N 1
+#SBATCH -q normal
+#SBATCH -A xtyang
+#SBATCH -p cpu
+#SBATCH --mem-per-cpu 1990
+#SBATCH -t 1:00:00     
 #SBATCH -o %x_%A.out     
 #SBATCH -e %x_%A.err
-module load intel
-module load netcdf-fortran/4.5.3
 
-invblk='../inv.structure.kerVpVs/block.64x58x48.1x1x1.1x1x1.nc'
+# 1. Environment: Force a clean, Intel-specific stack
+module --force purge
+module load intel/2024.1 impi/2021.12 hdf5/1.14.3 netcdf-c/4.9.2 netcdf-fortran/4.6.1
+
+invblk='../inv.structure.kerVpVs/block.33x35x22.1x1x1.1x1x1.nc'
 
 # This correction is not needed when both the source and sgts are 
 # calculated in the same way or properly scaled
@@ -20,7 +25,7 @@ fct_ker="1 1 1 1"
 # from running ../inv.structure.kerVpVs/inv_make_block_stride_xygridcent.m, 
 # Vm at the free surface (half thickness) ~= 2.2e14; at depth Vm ~ 9e14;
 # Kmin*Vm(surf) = 2e-2
-thres_ker="5e-3 5e-3 5e-3 5e-3"
+thres_ker="-3.7e-5 -3.7e-5 -3.7e-5 -3.7e-5"  # [velocity displacement P-wave S-wave]
 
 outdir='../inv.structure.kerVpVs/G_spool/'
 

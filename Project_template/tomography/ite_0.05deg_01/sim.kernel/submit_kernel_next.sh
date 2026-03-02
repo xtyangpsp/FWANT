@@ -9,8 +9,8 @@ stalist=$1 #'unfinishedkernels_1.txt'
 for sta in `awk '{print $1}' $stalist`
 do
 	echo 'submitting '$sta
-#	sbatch ${sta}.submit
-	sbatch -A standby -t 4:00:00 ${sta}.submit
+	sbatch ${sta}.submit
+	#sbatch -A standby -t 4:00:00 ${sta}.submit
 	sleep 0.05
 done
 

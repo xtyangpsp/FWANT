@@ -7,7 +7,7 @@ if [ $# -lt 1 ]
 fi
 
 stafile=$1 #'station_conf_list'
-nfile_min=32
+nfile_min=`grep "#SBATCH -n" submit_kernel_mpi_template.sh | awk '{print $3}'`
 
 for d in `awk '{print $1}' ${stafile}`
 do

@@ -4,14 +4,13 @@
 ### kernels calculation
 ############################################################
 
-ite=ite_0.05deg_01
-wkdir=/depot/xtyang/data/projects/xtyang/craton/$ite
-#wkdir=/scratch/bell/xtyang/FWANT_craton/${ite}
+ite=ite_0.00001deg_01
+wkdir=/depot/xtyang/data/projects/xtyang/FloridanAquifer/RiverRise/$ite
 listdir=$wkdir/measure
 echo $listdir
 
-# raw delay measurement file
-listfile=$listdir/ite_0.05deg_01_measure_result_craton_dt7cc0.75snr7.dat
+# raw delay measurement file # 
+listfile=$listdir/${ite}_measure_result_riverrise.dat
 
 ###################################################################
 ################# End of global parameters.
