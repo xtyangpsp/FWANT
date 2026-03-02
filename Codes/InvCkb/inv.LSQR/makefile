@@ -5,9 +5,8 @@
 #******************************************************************************#
 
 FC=ifort 
-
 # Base optimized flags
-FFLAG_BASE=-O3 -xHost -ipo -heap-arrays -assume byterecl -g -traceback
+FFLAG_BASE=-O3 -xHost -ipo -heap-arrays -assume byterecl -g -traceback -fpp
 
 # Toggle Precision
 ifeq ($(DP), 1)
