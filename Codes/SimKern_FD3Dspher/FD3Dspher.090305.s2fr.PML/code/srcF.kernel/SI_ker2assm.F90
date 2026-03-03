@@ -566,7 +566,9 @@ max_bdwid=max(max_bdwid,ncoef)
 open(fid,file=trim(filenm),status='unknown',form='unformatted')
 write(fid) num_blk,ker0
 write(fid) ncoef
-write(fid) (keridx(m),kerval(m),m=1,ncoef)
+write(fid) keridx(1:ncoef)
+write(fid) kerval(1:ncoef)
+!write(fid) (keridx(m),kerval(m),m=1,ncoef)
 close(fid)
 end subroutine export_G_compact
 
