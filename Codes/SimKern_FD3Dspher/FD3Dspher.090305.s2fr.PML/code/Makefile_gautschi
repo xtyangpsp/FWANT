@@ -8,7 +8,10 @@
 # $Date: 2009-01-16 13:03:38 -0500 (Fri, 16 Jan 2009) $
 # $Revision: 73 $
 # $LastChangedBy: zhangw $
-
+# $Date: 2026-03-04$
+# $Changed by  Xiaotao Yang. Added DP flag$
+# $To compile in double precision run: make DP=1$
+# Default is in SP.
 #######################################################################
 #                 Compiler and macro flags setting                    #
 #######################################################################
@@ -29,7 +32,11 @@ USEOMP :=ON
 
 USEPML := ON
 #WITHQS := ON
-DataTypeDouble := ON
+ifeq ($(DP), 1)
+    DataTypeDouble := ON
+else
+    DataTypeDouble := OFF
+endif
 
 SrcSmooth :=ON
 SrcSurface := ON

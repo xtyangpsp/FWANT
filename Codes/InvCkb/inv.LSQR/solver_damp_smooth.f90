@@ -36,7 +36,6 @@ implicit none
 !   08/13 Y. Shen: change mdata and station location files
 !                   change the defination of variance (fit in the program).
 !   08/12/2008 W. Zhang: port to fortran90 format and only keep simple mode
-
 character (len=*),parameter ::  &
   hline="----------------------------------------------------"
 character (len=300) :: rcdstr
@@ -178,9 +177,9 @@ icount=icount+1
      if (ierr>0) call error_except("open kernel err:"//trim(fnm_G))
      read(gid) num_blk,ker0(k)
      read(gid) ncoef
+     
      read(gid) indx0(nael+1:nael+ncoef)
      read(gid) coef_sp(nael+1:nael+ncoef)
-     !read(gid) (indx0(nael+i),coef_sp(nael+i),i=1,ncoef)
      close(gid)
 
      do i=1,ncoef

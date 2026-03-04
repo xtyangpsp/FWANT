@@ -33,10 +33,8 @@ all:
 
 # Clean target to remove local and installed binaries
 clean:
-	rm -f inv_ckb_integral_SP inv_ckb_synthetic_SP
-	rm -f inv_ckb_integral_DP inv_ckb_synthetic_DP
+	rm -f ${NAME_SYN} ${NAME_INT}
 	rm -f inv_make_ckb
-	rm -f ${BIN_DIR}inv_ckb_integral_SP ${BIN_DIR}inv_ckb_synthetic_SP
-	rm -f ${BIN_DIR}inv_ckb_integral_DP ${BIN_DIR}inv_ckb_synthetic_DP
+	rm -f ${BIN_DIR}${NAME_SYN} ${BIN_DIR}${NAME_INT}
 	rm -f ${BIN_DIR}inv_make_ckb
 

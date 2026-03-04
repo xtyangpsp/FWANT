@@ -94,9 +94,9 @@ list_loop: do
      if (ierr>0) call error_except("open kernel err:"//trim(fnm_G))
      read(gid) num_blk,ker0(k)
      read(gid) ncoef
+     
      read(gid) indx0(nael+1:nael+ncoef)
      read(gid) coef_sp(nael+1:nael+ncoef)
-     !read(gid) (indx0(nael+i),coef_sp(nael+i),i=1,ncoef)
      close(gid)
 
      do i=1,ncoef

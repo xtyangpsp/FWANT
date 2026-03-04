@@ -27,4 +27,4 @@ all:
 	cp ${APP_NAME} ${BIN_DIR}
 
 clean:
-	rm -f ${APP_NAME} ${BIN_DIR}solver_DP ${BIN_DIR}solver_SP
+	rm -f ${APP_NAME} ${BIN_DIR}${APP_NAME}
