@@ -158,7 +158,7 @@ real(DP),parameter :: &
   atol=1.0e-7_DP,     &
   btol=1.0e-7_DP,     &
   conlim=0.0_DP
-integer,parameter :: maxit=30000
+integer,parameter :: maxit=100000
 integer,intent(out) :: itct
 
 integer(I8B):: i
