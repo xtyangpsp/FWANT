@@ -53,6 +53,13 @@ call media_fnm_init(fnm_conf)
 call media_alloc
 call media_import(thisid(1),thisid(2),thisid(3))
 
+! --- C ---
+! We pass the MPI coordinates (thisid) and grid/media arrays
+call check_stability(thisid(1), thisid(2), thisid(3), &
+                            ni, nj, nk, stept,               &
+                            gx, gy, gz, lambda, mu, rho)
+! --------------------------
+
 call src_fnm_init(fnm_conf)
 call src_import(thisid(1),thisid(2),thisid(3))
 !call src_choose
@@ -519,7 +526,68 @@ call MPI_FINALIZE(ierr)
 !-----------------------------------------------------------------------!
 !contains
 !-----------------------------------------------------------------------!
+subroutine check_stability(id1, id2, id3, ni, nj, nk, stept, gx, gy, gz, lambda, mu, rho)
+    use constants_mod
+    use math_mod, only : dist_point2plane
+    use mpi
+    implicit none
 
+    integer, intent(in) :: id1, id2, id3, ni, nj, nk
+    real(SP), intent(in) :: stept
+    real(SP), dimension(0:ni+1,0:nj+1,0:nk+1), intent(in) :: gx, gy, gz, lambda, mu, rho
+
+    integer  :: i, j, k, ierr
+    real(SP) :: Vp, dtLe, dtlocal, dtmax_local, dtmax_global
+    
+    dtmax_local = 1.0e10
+
+    ! Each MPI rank checks its own local chunk of the model
+    do k = 1, nk
+    do j = 1, nj
+    do i = 1, ni
+        ! P-wave velocity is the limiting factor for stability
+        Vp = sqrt((lambda(i,j,k) + 2.0*mu(i,j,k)) / rho(i,j,k))
+
+        ! Calculate the shortest distance to cell faces (essential for non-uniform grids)
+        dtLe = min( &
+            dist_point2plane((/gx(i,j,k),gy(i,j,k),gz(i,j,k)/),             &
+               (/ gx(i+1,j  ,k  ),gy(i+1,j  ,k  ),gz(i+1,j  ,k  ) /),   &
+               (/ gx(i  ,j+1,k  ),gy(i  ,j+1,k  ),gz(i  ,j+1,k  ) /),   &
+               (/ gx(i  ,j  ,k+1),gy(i  ,j  ,k+1),gz(i  ,j  ,k+1) /)) , &
+            dist_point2plane((/gx(i,j,k),gy(i,j,k),gz(i,j,k)/),             &
+               (/ gx(i+1,j  ,k  ),gy(i+1,j  ,k  ),gz(i+1,j  ,k  ) /),   &
+               (/ gx(i  ,j+1,k  ),gy(i  ,j+1,k  ),gz(i  ,j+1,k  ) /),   &
+               (/ gx(i  ,j  ,k+1),gy(i  ,j  ,k+1),gz(i  ,j  ,k+1) /))   &
+        )
+
+        ! 1.3 is the safety factor used in SeisFD3D for stability
+        dtlocal = 1.3 / Vp * dtLe
+        if (dtlocal < dtmax_local) dtmax_local = dtlocal
+    end do
+    end do
+    end do
+
+    ! Collective communication: all CPUs share their minimum to find the global minimum
+    call MPI_ALLREDUCE(dtmax_local, dtmax_global, 1, MPI_REAL, MPI_MIN, MPI_COMM_WORLD, ierr)
+
+    ! Only the Master Rank (0,0,0) prints the results to the log
+    if (id1 == 0 .and. id2 == 0 .and. id3 == 0) then
+        write(*,*) "--------------------------------------------------------"
+        write(*,*) "  MPI STABILITY CHECK"
+        write(*,*) "  Max P-wave allowed dt: ", dtmax_global
+        write(*,*) "  User configured stept: ", stept
+        
+        if (stept > dtmax_global) then
+            write(*,*) "  ERROR: Simulation is UNSTABLE!"
+            write(*,*) "  Please reduce 'stept' in SeisFD3D.conf to < ", dtmax_global
+            write(*,*) "--------------------------------------------------------"
+            call MPI_ABORT(MPI_COMM_WORLD, 1, ierr)
+        else
+            write(*,*) "  Stability Check Passed. Starting Simulation..."
+            write(*,*) "--------------------------------------------------------"
+        end if
+    end if
+end subroutine check_stability
 end program seis3d_wave
 
 ! vim:ft=fortran:ts=4:sw=4:nu:et:ai:
