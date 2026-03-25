@@ -620,6 +620,11 @@ subroutine check_my_stability(dt_out)
     real(DP) :: p_a(3), p_b(3), p_c(3)
 
     dtmax_local = 1.0d10
+    ! TEST: Print rank info once to ensure output is working
+    if (thisid(1)==0 .and. thisid(2)==0 .and. thisid(3)==0) then
+        write(*,*) "DEBUG: Starting stability loop for Rank 0..."
+        call flush(6)
+    end if
 
     do k = 1, nk
     do j = 1, nj
@@ -627,10 +632,13 @@ subroutine check_my_stability(dt_out)
         ii = i + ni1 - 1
         jj = j + nj1 - 1
         kk = k + nk1 - 1
-        ! DEBUG: Check for zero/negative values before math
-        if (rho(i,j,k) <= 0.0_DP) then
-            print *, "ERROR: Zero density at i,j,k: ", i, j, k
-        endif
+        ! Check if any input is NaN (x /= x is the standard NaN test in Fortran)
+        if (rho(i,j,k) /= rho(i,j,k) .or. x(ii) /= x(ii)) then
+             write(*,*) "RANK ", thisid, " FOUND NaN at i,j,k: ", i,j,k
+             call flush(6)
+             call MPI_ABORT(MPI_COMM_WORLD, 1, local_ierr)
+        end if
+
         Vp = sqrt((lambda(i,j,k) + 2.0_DP*mu(i,j,k)) / rho(i,j,k))
 
         ! Forward neighbors
@@ -649,6 +657,16 @@ subroutine check_my_stability(dt_out)
         dtLe = min(dtLe, dist_p2p(x(ii), y(jj), z(kk), p_a, p_b, p_c))
 
         dtlocal = 1.3_DP / Vp * dtLe
+        ! Force an abort if we hit the zero
+        if (dtlocal < 1.0d-18) then
+            write(*,*) "--- ZERO DETECTED ON RANK ", thisid, " ---"
+            write(*,*) "i,j,k: ", i, j, k
+            write(*,*) "Vp: ", Vp, " dtLe: ", dtLe
+            write(*,*) "Media: ", rho(i,j,k), lambda(i,j,k), mu(i,j,k)
+            call flush(6)
+            call MPI_ABORT(MPI_COMM_WORLD, 1, local_ierr)
+        end if
+
         if (dtlocal < dtmax_local) dtmax_local = dtlocal
     end do
     end do
