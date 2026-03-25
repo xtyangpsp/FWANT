@@ -30,7 +30,7 @@ use omp_lib
 
 implicit none
 integer ntime,ierr
-
+real(DP) :: dtmax_global
 call MPI_INIT(ierr)
 
 call get_conf_name(fnm_conf)
@@ -88,7 +88,7 @@ call OMP_SET_NUM_THREADS(2)
 ! 8-4B FFB
 ! 3-3A FBF
 ! 6-2B FBB
-
+call check_my_stability(dtmax_global)
 loop_time: do
 !-----------------------------------------------------------------------------
 
@@ -605,9 +605,78 @@ call src_destroy
 
 call MPI_FINALIZE(ierr)
 !-----------------------------------------------------------------------!
-!contains
+contains
 !-----------------------------------------------------------------------!
+subroutine check_my_stability(dt_out)
+    ! Variables are split across para_mod and grid_mod
+    use para_mod,  only: ni, nj, nk, ni1, nj1, nk1, stept
+    use grid_mod,  only: x, y, z
+    use media_mod, only: lambda, mu, rho
+    use mpi_mod,   only: thisid ! ierr is handled locally or via mpi_mod depending on setup
+    
+    real(DP), intent(out) :: dt_out
+    integer :: i, j, k, ii, jj, kk, local_ierr
+    real(DP) :: Vp, dtLe, dtlocal, dtmax_local
+    real(DP) :: p_a(3), p_b(3), p_c(3)
 
+    dtmax_local = 1.0d10
+
+    do k = 1, nk
+    do j = 1, nj
+    do i = 1, ni
+        ii = i + ni1 - 1
+        jj = j + nj1 - 1
+        kk = k + nk1 - 1
+
+        Vp = sqrt((lambda(i,j,k) + 2.0_DP*mu(i,j,k)) / rho(i,j,k))
+
+        ! Forward neighbors
+        p_a = (/ x(ii+1), y(jj),   z(kk)   /)
+        p_b = (/ x(ii),   y(jj+1), z(kk)   /)
+        p_c = (/ x(ii),   y(jj),   z(kk+1) /)
+        dtLe = dist_p2p(x(ii), y(jj), z(kk), p_a, p_b, p_c)
+
+        ! Backward neighbors
+        p_a = (/ x(ii-1), y(jj),   z(kk)   /)
+        p_b = (/ x(ii),   y(jj-1), z(kk)   /)
+        p_c = (/ x(ii),   y(jj),   z(kk-1) /)
+        dtLe = min(dtLe, dist_p2p(x(ii), y(jj), z(kk), p_a, p_b, p_c))
+
+        dtlocal = 1.3_DP / Vp * dtLe
+        if (dtlocal < dtmax_local) dtmax_local = dtlocal
+    end do
+    end do
+    end do
+
+    ! Note: Use a local ierr variable for the MPI call
+    call MPI_ALLREDUCE(dtmax_local, dt_out, 1, MPI_DOUBLE_PRECISION, MPI_MIN, MPI_COMM_WORLD, local_ierr)
+
+    if (thisid(1) == 0 .and. thisid(2) == 0 .and. thisid(3) == 0) then
+        write(*,'(A)') "--------------------------------------------------------"
+        write(*,'(A,F12.8)') "  CFL STABILITY ANALYSIS"
+        write(*,'(A,F12.8)') "  Max allowable dt: ", dt_out
+        write(*,'(A,F12.8)') "  Current stept:    ", stept
+        
+        if (real(stept, DP) > dt_out) then
+            write(*,'(A)') "  >>> STATUS: UNSTABLE <<<"
+            call MPI_ABORT(MPI_COMM_WORLD, 1, local_ierr)
+        else
+            write(*,'(A)') "  >>> STATUS: STABLE <<<"
+            write(*,'(A)') "--------------------------------------------------------"
+        end if
+    end if
+end subroutine check_my_stability
+
+function dist_p2p(x0,y0,z0,p1,p2,p3) result(d)
+    real(DP), intent(in) :: x0, y0, z0
+    real(DP), intent(in) :: p1(3), p2(3), p3(3)
+    real(DP) :: d, a, b, c, length
+    a = (p2(2)-p1(2))*(p3(3)-p1(3)) - (p2(3)-p1(3))*(p3(2)-p1(2))
+    b = (p2(3)-p1(3))*(p3(1)-p1(1)) - (p2(1)-p1(1))*(p3(3)-p1(3))
+    c = (p2(1)-p1(1))*(p3(2)-p1(2)) - (p2(2)-p1(2))*(p3(1)-p1(1))
+    length = sqrt(a**2 + b**2 + c**2)
+    d = abs(a*(x0-p1(1)) + b*(y0-p1(2)) + c*(z0-p1(3))) / (length + 1.0d-20)
+end function dist_p2p
 end program seis3d_wave
 
 ! vim:ft=fortran:ts=4:sw=4:nu:et:ai:
