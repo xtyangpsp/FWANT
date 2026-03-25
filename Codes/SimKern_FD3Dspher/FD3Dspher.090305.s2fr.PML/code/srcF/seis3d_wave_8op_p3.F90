@@ -627,7 +627,10 @@ subroutine check_my_stability(dt_out)
         ii = i + ni1 - 1
         jj = j + nj1 - 1
         kk = k + nk1 - 1
-
+        ! DEBUG: Check for zero/negative values before math
+        if (rho(i,j,k) <= 0.0_DP) then
+            print *, "ERROR: Zero density at i,j,k: ", i, j, k
+        endif
         Vp = sqrt((lambda(i,j,k) + 2.0_DP*mu(i,j,k)) / rho(i,j,k))
 
         ! Forward neighbors
@@ -635,7 +638,10 @@ subroutine check_my_stability(dt_out)
         p_b = (/ x(ii),   y(jj+1), z(kk)   /)
         p_c = (/ x(ii),   y(jj),   z(kk+1) /)
         dtLe = dist_p2p(x(ii), y(jj), z(kk), p_a, p_b, p_c)
-
+        if (dtLe <= 0.0_DP) then
+            print *, "ERROR: Zero grid spacing at indices: ", ii, jj, kk
+            print *, "Coords: ", x(ii), x(ii+1)
+        endif
         ! Backward neighbors
         p_a = (/ x(ii-1), y(jj),   z(kk)   /)
         p_b = (/ x(ii),   y(jj-1), z(kk)   /)
