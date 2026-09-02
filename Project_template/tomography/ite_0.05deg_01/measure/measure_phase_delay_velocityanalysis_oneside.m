@@ -18,6 +18,7 @@ addpath(genpath('/depot/xtyang/data/codes/MatNoise/src'))
 %%%%%%%%%%%%%%% Parameter section 1: users should modify for each project
 %%%%%%%%%%%%%%% and iteration 
 PROJHOME = '/Users/xtyang/Work/Research/Projects/FloridanAquifer/RiverRise';
+%PROJHOME = '/depot/xtyang/data/projects/xtyang/FloridanAquifer/RiverRise';
 ite = '/ite_0.00001deg_01';
 wkdir = [PROJHOME ite];
 egfdir = [PROJHOME '/data/data_riverrise/PAIRS_TWOSIDES_gaussian_a0.005t0.015'];
@@ -32,13 +33,14 @@ pband = flip(1./fband,2);
 % max_dV and max_dT are combined in checking the phase delays to make sure
 % they are within the allowed perturbation range and to avoid
 % cycle-skipping
-max_dV = 0.25;
-max_dT = 0.3; 
+max_dV = 0.6;
+max_dT = 0.5; 
 
 % QC to save phase delays.
 snr_cutoff = 4;
-xcoeff_cutoff = 0.6; 
+xcoeff_cutoff = 0.5; 
 min_wavelength = 0.75; %
+maxdelay_scaling_buffer=0.99; %measured delay needs to be within this scaling for maxdelay. 
 min_substack = 3; 
 
 % dt in seconds.
@@ -50,10 +52,13 @@ tmaximum=4.0;   %max length of the synthetic EGFs
 tmaximumegf=5.0; % length of the observed EGFs
 
 v_search_grid = 0.2:0.01:2.0; %velocity range for velocity analysis to decide the best signal window
+% Scaling factors for each frequency band (one for each row in fband)
+% Increase these for higher frequencies to capture scattering/coda
+win_scales = [2.5, 2.5, 3, 3.0, 4.0, 6.0];
 model_grid_spacing=0.00001; 
 
 %plot control
-fig_flag = 0;  %turn off for parfor.
+fig_flag = 1;  %turn off for parfor.
 save_fig=0;
 
 %save the measured phase delay or not.
@@ -145,7 +150,7 @@ for ii = 1:nsource
                 win_samples = round(tfmin(k) / dt_egf);
                 if it_arrival > win_samples && (it_arrival + win_samples) < length(temp_data)
                     env = abs(hilbert(temp_data(it_arrival-win_samples : it_arrival+win_samples)));
-                    stack_energy = stack_energy + max(env);
+                    stack_energy = stack_energy + median(env);
                 end
             end
             energy_results(iv) = stack_energy;
@@ -180,8 +185,14 @@ for ii = 1:nsource
     end
 
     % result_strings collects output to avoid FID conflicts
+%     error('test')
     result_strings = cell(npairs, 1);
-    for n = 1:npairs
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%% PARFOR for parallel here%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    parfor n = 1:npairs
         synfile = synfilelist(n).name;
         stemp = strsplit(synfile(1:end - length(synfileext)), '.to.');
         src = stemp{1}; rcv = stemp{2};
@@ -216,8 +227,8 @@ for ii = 1:nsource
         % Define general shared window
         tmin_arrival_all = dist / max(best_v_source);
         tmax_arrival_all = dist / min(best_v_source);
-        tmin = max(0.9 * d_taper_time, tmin_arrival_all - 3 * tfmin(1));
-        tmax = min(tmaximum, tmax_arrival_all + 3.5 * max(tfmin));
+        tmin = max(0.9 * d_taper_time, tmin_arrival_all - max(win_scales) * tfmin(1));
+        tmax = min(tmaximum, tmax_arrival_all + max(win_scales) * max(tfmin));
         
         ttuni = 0:dt_resample:tmaximum;
         ntuni = length(ttuni);
@@ -233,15 +244,47 @@ for ii = 1:nsource
             f_pos = filtfilt(b, a, egf_pos);
             f_neg = filtfilt(b, a, egf_neg);
             
+            % --- NEW REFINEMENT LOGIC START ---
+            % 1. Moveout-aware "First Guess"
+            t_moveout = dist / best_v_source(k);
+            
+            % 2. Define a search range around the moveout (+/- 0.5*scaling cycles)
+            % to find the actual observed arrival peak.
+            search_half_width = 0.5*win_scales(k) * tfmin(k); %narrower scaling for refinement search of the EGF arrivals.
+            it_search = round((t_moveout - search_half_width)/dt_egf) : ...
+                        round((t_moveout + search_half_width)/dt_egf);
+            it_search = it_search(it_search > 0 & it_search <= length(f_pos));
+            
+            % 3. Find the peak of the envelope on the combined observed data
+            % Using the weighted combined signal helps stability.
+            % (Note: Pre-calculating combined_f for search here)
+            snr_p_tmp = max(abs(f_pos(it_search))) / rms(f_pos); % Rough SNR for peak search
+            snr_n_tmp = max(abs(f_neg(it_search))) / rms(f_neg);
+            w_p_tmp = snr_p_tmp^2 / (snr_p_tmp^2 + snr_n_tmp^2 + eps);
+            w_n_tmp = snr_n_tmp^2 / (snr_p_tmp^2 + snr_n_tmp^2 + eps);
+            combined_search = w_p_tmp * f_pos + w_n_tmp * f_neg;
+            
+            [~, local_idx] = max(abs(hilbert(combined_search(it_search))));
+            if isempty(local_idx)
+                t_refined_center = t_moveout; % Fallback
+            else
+                t_refined_center = taxis_egf(it_search(local_idx));
+            end
+            
+            % 4. Center the measurement window on the REFINED arrival
+            % Focus on the main packet to avoid scattering/coda decorrelation.
+            t1_band(k) = max(dt_resample, t_refined_center - win_scales(k) * tfmin(k));
+            t2_band(k) = min(tmaximumegf, t_refined_center + win_scales(k) * tfmin(k));
+            % --- NEW REFINEMENT LOGIC END ---
             % Refined window for SNR and measurement
-            t_center = dist / best_v_source(k);
-            t1_band(k) = max(dt_resample,t_center - 3.0 * tfmin(k));
-            t2_band(k) = min(tmaximumegf, t_center + 3.0 * tfmin(k));
+%             t_center = dist / best_v_source(k);
+%             t1_band(k) = max(dt_resample,t_center - 3.0 * tfmin(k));
+%             t2_band(k) = min(tmaximumegf, t_center + 3.0 * tfmin(k));
             it_sig = round(t1_band(k)/dt_egf):round(t2_band(k)/dt_egf);
             it_sig = it_sig(it_sig > 0 & it_sig <= length(f_pos));
             
             % Adaptive Noise Window
-            min_n = round(3 * tfmin(k) / dt_egf);
+            min_n = round(win_scales(k) * tfmin(k) / dt_egf);
             if (length(f_pos) - max(it_sig)) >= min_n
                 n_idx = (length(f_pos)-min_n+1):length(f_pos);
             elseif min(it_sig) > (min_n + round(0.1/dt_egf))
@@ -345,9 +388,11 @@ for ii = 1:nsource
             rxc(k)=rxc_temp(1,2);
 
             %form phase delay string:
-            if rxc(k) >= xcoeff_cutoff && snr(k) >= snr_cutoff && abs(phase(k)) <= min_wavelength*maxdelay_allband
+            if rxc(k) >= xcoeff_cutoff && snr(k) >= snr_cutoff && snr(k) < verylargenumber && ...
+                       abs(phase(k)) <= maxdelay_scaling_buffer*maxdelay_allband && ...
+                       dist >= min_wavelength*best_v_source(k)*tfmin(k)
                 xcid=[char(src) '/bp' num2str(fband(k,1)) '_' num2str(fband(k,2)) '/' stnpair '_BHZ.P2.CORR.T1T2.SAC'];
-                outstring=sprintf('%s %6.3f %2.0f %s %7.2f %7.2f %s %5.2f %5.2f %5.1f\n',...
+                outstring=sprintf('%s %8.4f %2.0f %s %8.4f %8.4f %s %8.4f %8.4f %5.1f\n',...
                     xcid, phase(k), 1, 'RL', tmin+t1_band(k), tmin+t2_band(k), ['f' num2str(k)], phaseerr(k), rxc(k), snr(k)); 
                 current_pair_string = current_pair_string + outstring;
             end
@@ -375,10 +420,9 @@ for ii = 1:nsource
                 text(-maxdelay_allband+0.005,-0.3,['xcoeff: ' num2str(rxc(k),2)],'FontSize',10); hold on
                 text(-maxdelay_allband+0.005,-0.9,['snr: ' num2str(snr(k),3)],'FontSize',10);hold on
 
-                % limiting phase < 0.95*maxdelay avoid measurements at 
-                % the boundries of the time window,which are likely unreliable
                 if rxc(k) >= xcoeff_cutoff && snr(k) >= snr_cutoff && snr(k) < verylargenumber && ...
-                        abs(phase(k)) <= min_wavelength*maxdelay_allband && tmin_arrival_all >= tfmin(k) 
+                       abs(phase(k)) <= maxdelay_scaling_buffer*maxdelay_allband && ...
+                       dist >= min_wavelength*best_v_source(k)*tfmin(k) 
                     text(+0.011,-0.1,'thumbs UP','Color',[0 0 1]);hold on
                 else
                     text(+0.011,-0.1,'thumbs DOWN','Color',[1 0 0]); hold on
