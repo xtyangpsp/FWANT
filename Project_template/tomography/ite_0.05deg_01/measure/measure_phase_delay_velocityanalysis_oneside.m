@@ -117,7 +117,7 @@ for ii = 1:nsource
             d_N = extract_corrdata_asdf([egfdir, '/', source, '/', fntemp_N.name]);
             d_P = extract_corrdata_asdf([egfdir, '/', source, '/', fntemp_P.name]);
             % Symmetric stack to enhance the surface wave signal for moveout search
-            combined_data = (d_P.value{1}.(egf_comp).data + flipud(d_N.value{1}.(egf_comp).data)) / 2;
+            combined_data = (d_P.value{1}.(egf_comp).data + d_N.value{1}.(egf_comp).data) / 2;
             all_egfs{n} = combined_data;
             all_dists(n) = d_P.value{1}.(egf_comp).dist;
             valid_pair_idx = [valid_pair_idx; n];
@@ -220,9 +220,9 @@ for ii = 1:nsource
 
         % Pre-filter buffers
         egf_pos = d_P.value{1}.(egf_comp).data .* w_taper_egf;
-        egf_neg = flipud(d_N.value{1}.(egf_comp).data) .* w_taper_egf;
+        egf_neg = d_N.value{1}.(egf_comp).data .* w_taper_egf;
         egf_sub_pos = d_P_sub.value{1}.(egf_comp).data .* w_taper_egf;
-        egf_sub_neg = flipud(d_N_sub.value{1}.(egf_comp).data) .* w_taper_egf;
+        egf_sub_neg = d_N_sub.value{1}.(egf_comp).data .* w_taper_egf;
 
         % Define general shared window
         tmin_arrival_all = dist / max(best_v_source);
