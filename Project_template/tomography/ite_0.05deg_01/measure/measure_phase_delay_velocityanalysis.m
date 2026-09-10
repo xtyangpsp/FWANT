@@ -120,7 +120,7 @@ for ii = 1%:nsource
             
             % Symmetric stack to enhance the surface wave signal
             % Note: Negative lag must be flipped to align with positive lag
-            combined_data = (d_P.value{1}.(egf_comp).data + flipud(d_N.value{1}.(egf_comp).data)) / 2;
+            combined_data = (d_P.value{1}.(egf_comp).data + d_N.value{1}.(egf_comp).data) / 2;
             
             all_egfs{np} = combined_data;
             all_dists(np) = d_P.value{1}.(egf_comp).dist;
