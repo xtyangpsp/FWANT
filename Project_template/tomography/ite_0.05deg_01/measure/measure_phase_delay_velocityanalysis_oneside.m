@@ -209,7 +209,7 @@ for ii = 1:nsource
 
         % Pre-filter buffers
         egf_pos = d_P.value{1}.(egf_comp).data .* w_taper_egf;
-        egf_neg = flipud(d_N.value{1}.(egf_comp).data) .* w_taper_egf;
+        egf_neg = d_N.value{1}.(egf_comp).data .* w_taper_egf;
         egf_sub_pos = d_P_sub.value{1}.(egf_comp).data .* w_taper_egf;
         egf_sub_neg = flipud(d_N_sub.value{1}.(egf_comp).data) .* w_taper_egf;
 
