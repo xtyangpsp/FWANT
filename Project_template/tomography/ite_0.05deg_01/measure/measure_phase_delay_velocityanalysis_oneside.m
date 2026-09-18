@@ -146,7 +146,7 @@ for ii = 1:nsource
                 temp_data = filtfilt(b, a, all_egfs_subset{idx}) .* w_taper_egf;
                 t_arrival = all_dists_subset(idx) / v_test;
                 it_arrival = round(t_arrival / dt_egf);
-                win_samples = round(tfmin(k) / dt_egf);
+                win_samples = round(0.5*tfmin(k) / dt_egf);
                 if it_arrival > win_samples && (it_arrival + win_samples) < length(temp_data)
                     env = abs(hilbert(temp_data(it_arrival-win_samples : it_arrival+win_samples)));
                     stack_energy = stack_energy + median(env);
