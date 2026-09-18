@@ -17,45 +17,44 @@ addpath(genpath('/depot/xtyang/data/codes/MatNoise/src'))
 
 %%%%%%%%%%%%%%% Parameter section 1: users should modify for each project
 %%%%%%%%%%%%%%% and iteration 
-PROJHOME = '/Users/xtyang/Work/Research/Projects/FloridanAquifer/RiverRise';
-%PROJHOME = '/depot/xtyang/data/projects/xtyang/FloridanAquifer/RiverRise';
-ite = '/ite_0.00001deg_01';
+PROJHOME = '/Users/xtyang/Work/Research/Projects/RiverRise';
+ite = '/ite_0.05deg_01';
 wkdir = [PROJHOME ite];
-egfdir = [PROJHOME '/data/data_riverrise/PAIRS_TWOSIDES_gaussian_a0.005t0.015'];
+egfdir = [PROJHOME '/data/data_riverrise/PAIRS_TWOSIDES_gaussian_a2t6'];
 syndir = [wkdir '/syn.seismograms'];
 outdir = [wkdir '/measure/measure_stnpair'];
 plotdir = strcat(wkdir,'/measure/plots_test');
 stainfo = [PROJHOME '/STinfo/station_riverrise_withdata_formatok.txt'];
 
-fband=[4 8; 6 10; 7 12; 9 15; 12 20; 15 25];
-pband = flip(1./fband,2);
+pband=[5 10; 7.5 15; 10 20; 15 30;20 40; 30 60];
+fband = flip(1./pband,2);
 
 % max_dV and max_dT are combined in checking the phase delays to make sure
 % they are within the allowed perturbation range and to avoid
 % cycle-skipping
-max_dV = 0.6;
-max_dT = 0.5; 
+max_dV = 0.15;
+max_dT = 15; 
 
 % QC to save phase delays.
 snr_cutoff = 4;
-xcoeff_cutoff = 0.5; 
-min_wavelength = 0.75; %
+xcoeff_cutoff = 0.7; 
+min_wavelength = 0.95; %
 maxdelay_scaling_buffer=0.99; %measured delay needs to be within this scaling for maxdelay. 
 min_substack = 3; 
 
 % dt in seconds.
-dt_resample=0.002;
-dt_egf = 0.01;
+dt_resample=0.05;
+dt_egf = 0.2;
 d_taper_samples=10; %number of observed EGF samples to taper
 d_taper_time=10*max(dt_egf,dt_resample);
-tmaximum=4.0;   %max length of the synthetic EGFs
-tmaximumegf=5.0; % length of the observed EGFs
+tmaximum=1000.0;   %max length of the synthetic EGFs
+tmaximumegf=1200.0; % length of the observed EGFs
 
-v_search_grid = 0.2:0.01:2.0; %velocity range for velocity analysis to decide the best signal window
+v_search_grid = 1.5:0.1:7.0; %velocity range for velocity analysis to decide the best signal window
 % Scaling factors for each frequency band (one for each row in fband)
 % Increase these for higher frequencies to capture scattering/coda
-win_scales = [2.5, 2.5, 3, 3.0, 4.0, 6.0];
-model_grid_spacing=0.00001; 
+win_scales = [2, 2, 2, 1.5, 1.5, 1.0];
+model_grid_spacing=0.05; 
 
 %plot control
 fig_flag = 1;  %turn off for parfor.
@@ -110,8 +109,8 @@ for ii = 1:nsource
         src = stemp{1}; rcv = stemp{2};
         if strcmp(src, rcv); continue; end
         stnpair = [src, '_', rcv];
-        fntemp_N = dir([egfdir, '/', source, '/', stnpair, '*', egf_comp, '_N_stack.h5']);
-        fntemp_P = dir([egfdir, '/', source, '/', stnpair, '*', egf_comp, '_P_stack.h5']);
+        fntemp_N = dir([egfdir, '/', source, '/', stnpair, '_*', egf_comp, '_N_stack.h5']);
+        fntemp_P = dir([egfdir, '/', source, '/', stnpair, '_*', egf_comp, '_P_stack.h5']);
         
         if ~isempty(fntemp_N) && ~isempty(fntemp_P)
             d_N = extract_corrdata_asdf([egfdir, '/', source, '/', fntemp_N.name]);
@@ -199,8 +198,8 @@ for ii = 1:nsource
         if strcmp(src, rcv); continue; end
         stnpair = [src, '_', rcv];
         
-        f_N_stack = dir([egfdir,'/',source,'/',stnpair,'*',egf_comp,'_N_stack.h5']);
-        f_P_stack = dir([egfdir,'/',source,'/',stnpair,'*',egf_comp,'_P_stack.h5']);
+        f_N_stack = dir([egfdir,'/',source,'/',stnpair,'_*',egf_comp,'_N_stack.h5']);
+        f_P_stack = dir([egfdir,'/',source,'/',stnpair,'_*',egf_comp,'_P_stack.h5']);
         if isempty(f_N_stack) || isempty(f_P_stack); continue; end
         
         disp(['working on pair: ' stnpair ' (' num2str(n) '/' num2str(npairs) ')'])
