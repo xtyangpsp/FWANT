@@ -159,20 +159,32 @@ for ii = 1:nsource
 
         %plot moveout for each frequency
         if fig_flag
+            %energy curves.
+            figure(fig_1);
+            subplot(2,ceil(nfb/2),k); hold on;
+            plot(v_search_grid,energy_results)
+            hold on
+            plot([best_v_source(k) best_v_source(k)],[min(energy_results) max(energy_results)],'r')
+            hold off
+            xlabel('test velocities (km/s)')
+            ylabel('stacked amplitudes')
+            title("Results of the v Grid Search for fband "  + k);
+            
+            %moveout wiggles
+            figure(fig_2)
             subplot(2,ceil(nfb/2),k); hold on;
             wiggle_scale=0.01*range(all_dists_subset);
             for idx = 1:npairs_valid
-                np = idx;
-                temp_data = filtfilt(b, a, all_egfs_subset{np});
+                temp_data = filtfilt(b, a, all_egfs_subset{idx});
                 temp_data = temp_data.*w_taper_egf;
-                plot(taxis_egf,all_dists_subset(np)+wiggle_scale*temp_data./max(abs(temp_data)),'k')
+                plot(taxis_egf,all_dists_subset(idx)+wiggle_scale*temp_data./max(abs(temp_data)),'k')
             end
             %plot the best velocity line
             plot(taxis_egf,best_v_source(k)*taxis_egf,'r')
             ylim([min(all_dists_subset)-wiggle_scale max(all_dists_subset)+wiggle_scale])
             box on;
             hold off
-            title([source,' at ',num2str(fband(k,1)),'-',num2str(fband(k,2)),' Hz: ',num2str(best_v_source(k)),' km/s'])
+            title([source,' at ',num2str(fband(k,1)),'-',num2str(fband(k,2)),' s: ',num2str(best_v_source(k)),' km/s'])
             xlabel('time (s)')
             ylabel('distance (km)')
             set(gca,'TickDir','out')
