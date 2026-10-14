@@ -16,7 +16,7 @@ str_cm='#';
 fid=fopen(fnm_conf);
 conf=textscan(fid,'%s','delimiter','\n','whitespace','');
 fclose(fid);
-nline=size(conf{1});
+nline=size(conf{1},1);
 
 for n=1:nline
 
