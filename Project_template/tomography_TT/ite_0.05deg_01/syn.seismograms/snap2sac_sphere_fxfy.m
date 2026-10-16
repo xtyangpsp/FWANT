@@ -62,7 +62,7 @@ run_y = 'fy';            % run folder with the unit force toward +y (east)
 do_rotate     = true;    % true: build TT/RR/transverse-force responses; false: save raw fx and fy only
 save_RR       = true;    % also save RR (only used if do_rotate)
 save_XYZ      = true;    % save fT.Vx, fT.Vy (needed by the kernel step; only used if do_rotate)
-save_Z        = true;    % include fT.Vz (the kernel code reads a Z file when it uses rotated picks)
+save_Z        = true;    % include fT.Vz (only the original SI_ker_sta.F90 reads it; SI_ker_sta_fxyz.F90 does not)
 save_raw      = false;   % additionally save the unrotated fx/fy responses (always on if do_rotate = false)
 save_disp_TT  = true;    % displacement SAC for TT and RR
 save_disp_XYZ = false;   % displacement SAC for fT.x/y/z and raw (kern_synthetic4kernel integrates velocity itself)
