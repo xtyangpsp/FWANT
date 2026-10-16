@@ -196,6 +196,7 @@ parfor nstsrc=1:nrecv %
     % A(layer, receiver, component, run); T(layer, run)
     A = nan(nlayers,nrecv,ncomp,2,'single');
     T = nan(nlayers,2);
+    tload = tic;
     for j=1:nlayers
         ly=layers(j);
         for r = 1:2
@@ -208,6 +209,9 @@ parfor nstsrc=1:nrecv %
                 A(j,:,c,r) = single(vq');
             end
             T(j,r) = t;
+        end
+        if mod(j,500) == 0 || j == nlayers
+            fprintf('  %s: %d/%d layers read (%.0f s)\n', event_name, j, nlayers, toc(tload));
         end
     end  % end of nlayer
     if max(abs(T(:,1)-T(:,2))) > 1e-6
