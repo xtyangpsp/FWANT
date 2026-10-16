@@ -14,7 +14,7 @@
 %    once per source instead of two dir() calls per pair (twice); every EGF
 %    is filtered/tapered/normalised once per band in the velocity analysis
 %    instead of once per test velocity; big per-pair arrays are released;
-%    per-source timing is printed; optional pool restart.
+%    per-source timing is printed.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%% Set up global parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 close all;
@@ -30,7 +30,7 @@ ite = '/ite_0.025deg_01';
 wkdir = [PROJHOME ite];
 egfdir = [PROJHOME '/data/data_riogrande/PAIRS_TWOSIDES_gaussian_a1t3'];
 syndir = [wkdir '/syn.seismograms'];
-outdir = [wkdir '/measure/measure_stnpair'];
+outdir = [wkdir '/measure/measure_stnpair_test'];
 plotdir = strcat(wkdir,'/measure/plots_test');
 stainfo = [PROJHOME '/STinfo/station_riogrande_withdata_formatok.txt'];
 
@@ -86,8 +86,6 @@ save_fig=0;
 save_delays=1;
 
 %speed / diagnostics
-isource_start = 1;       % first source of sourcelist to process (was hard-coded in the loop)
-restart_pool_every = 0;   % >0: restart the parallel pool every N sources to release worker memory; 0 = off
 print_timing = 1;         % print timing and client memory per source
 
 %%%%%%%%%%% Parameter section 2: derived parameters or those that users
@@ -130,16 +128,8 @@ if ~exist(plotdir,'dir'); system(['mkdir ' plotdir]); end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-for ii = isource_start:nsource
+for ii = 1:nsource %change the range here to process a subset of sources
     t_source = tic;
-    if restart_pool_every > 0 && ii > isource_start && mod(ii-isource_start, restart_pool_every) == 0
-        p_old = gcp('nocreate');
-        if ~isempty(p_old)
-            cl_old = p_old.Cluster; nw_old = p_old.NumWorkers;
-            delete(p_old);
-            parpool(cl_old, nw_old);
-        end
-    end
     source = sourcelist{ii};
     disp([num2str(ii),' --> ',source]);
     synfilelist=dir([syndir,'/',source,'/*',synfileext]);
@@ -208,13 +198,22 @@ for ii = isource_start:nsource
     taxis_egf = (0:npts_egf-1)*dt_egf;
 
 
-    %
-    if fig_flag
-        fig_1=figure('Position',[400 400 1000 650]);
-        fig_2=figure('Position',[400 400 1000 650]);
+    % A velocity (moveout) analysis needs more than one pair. With a single
+    % valid pair, skip it and use the default group velocities for all bands
+    % (same behavior as the original script).
+    if npairs_valid == 1
+        best_v_source = cmax_default(:);
+        vel_bands = [];
+        disp('Only one pair available. Use default group velocities for all frequencies.')
+    else
+        best_v_source = zeros(nfb, 1);
+        vel_bands = 1:nfb;
+        if fig_flag
+            fig_1=figure('Position',[400 400 1000 650]);
+            fig_2=figure('Position',[400 400 1000 650]);
+        end
     end
-    best_v_source = zeros(nfb, 1);
-    for k = 1:nfb
+    for k = vel_bands
         w_taper_egf = tukeywin(npts_egf,taperfraction_egf(k));
         energy_results = zeros(length(v_search_grid), 1);
         [b, a] = butter(N, [fband(k,1) fband(k,2)] / (1/dt_egf/2));
@@ -640,7 +639,7 @@ for ii = isource_start:nsource
         end
         fclose(fidout);
     end
-    if fig_flag
+    if fig_flag && npairs_valid > 1
         if ishandle(fig_1); close(fig_1); end
         if ishandle(fig_2); close(fig_2); end
     end
