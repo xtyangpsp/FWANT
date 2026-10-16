@@ -1,4 +1,4 @@
-function stats = plt_data_dist_multiple_test(delayfilelist, fband, subplotpar, maxdt, maxy, cutoffmethod, labels, opts)
+function stats = plt_data_dist_multiple(delayfilelist, fband, subplotpar, maxdt, maxy, cutoffmethod, labels, opts)
 %PLT_DATA_DIST_MULTIPLE  Plot delay-vs-distance for several datasets, one panel per frequency band.
 %
 % USAGE
