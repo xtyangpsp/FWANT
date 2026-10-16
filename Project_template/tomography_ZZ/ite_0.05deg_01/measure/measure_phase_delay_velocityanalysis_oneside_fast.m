@@ -25,14 +25,19 @@ addpath(genpath('/depot/xtyang/data/codes/MatNoise/src'))
 %%%%%%%%%%%%%%% Parameter section 1: users should modify for each project
 %%%%%%%%%%%%%%% and iteration
 PROJHOME = '/depot/xtyang/data/projects/xtyang/RioGrande/FWANT_ZZ';
-%PROJHOME = '/Volumes/xtyang/data/projects/xtyang/RioGrande/FWANT_ZZ';
+%PROJHOME = '/Volumes/xtyang/data/projects/xtyang/RioGrande/FWANT_TT';
 ite = '/ite_0.025deg_01';
 wkdir = [PROJHOME ite];
 egfdir = [PROJHOME '/data/data_riogrande/PAIRS_TWOSIDES_gaussian_a1t3'];
 syndir = [wkdir '/syn.seismograms'];
-outdir = [wkdir '/measure/measure_stnpair_test'];
+outdir = [wkdir '/measure/measure_stnpair'];
 plotdir = strcat(wkdir,'/measure/plots_test');
 stainfo = [PROJHOME '/STinfo/station_riogrande_withdata_formatok.txt'];
+
+%wave types to process.
+
+synfileext='.fz.Uz.SAC'; %check the displacement file extension in the syn.seismograms folder.
+egf_comp='ZZ'; %TT (Love waves) or ZZ (Rayleigh waves)
 
 pband=[7.5 15; 10 20; 15 30; 20 40; 30 55; 40 70];
 fband = flip(1./pband,2);
@@ -106,8 +111,16 @@ verylargenumber = 1.e9;
 
 N=2; %number of poles in butterworth filter design
 
-synfileext='.fz.Uz.SAC';
-egf_comp='ZZ';
+if strcmp(egf_comp,'TT')
+	delay_label = 'LV';
+	chan_label = 'BHT';
+elseif strcmp(egf_comp,'ZZ')
+	delay_label = 'RL';
+	chan_label = 'BHZ';
+else
+	error('wrong egf_comp, has to be TT or ZZ')
+end
+
 tfmin=1./fband(:,1);
 [nfb, nc]=size(fband);
 
@@ -578,9 +591,9 @@ for ii = 1:nsource %change the range here to process a subset of sources
             if rxc(k) >= xcoeff_cutoff && snr(k) >= snr_cutoff && snr(k) < verylargenumber && ...
                        abs(phase(k)) <= maxdelay_scaling_buffer*maxdelay_band(k) && ...
                        dist >= min_wavelength*best_v_source(k)*tfmin(k)
-                xcid=[char(src) '/bp' num2str(fband(k,1)) '_' num2str(fband(k,2)) '/' stnpair '_BHZ.P2.CORR.T1T2.SAC'];
+                xcid=[char(src) '/bp' num2str(fband(k,1)) '_' num2str(fband(k,2)) '/' stnpair '_' chan_label '.P2.CORR.T1T2.SAC'];
                 outstring=sprintf('%s %8.4f %2.0f %s %8.4f %8.4f %s %8.4f %8.4f %5.1f\n',...
-                    xcid, phase(k), 1, 'RL', tmin+t1_band(k), tmin+t2_band(k), ['f' num2str(k)], phaseerr(k), rxc(k), snr(k));
+                    xcid, phase(k), 1, delay_label, tmin+t1_band(k), tmin+t2_band(k), ['f' num2str(k)], phaseerr(k), rxc(k), snr(k));
                 current_pair_string = current_pair_string + outstring;
             end
         end
