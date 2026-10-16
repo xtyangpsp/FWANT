@@ -199,6 +199,7 @@ parfor nstsrc=1:nrecv %
     for j=1:nlayers
         ly=layers(j);
         for r = 1:2
+            t = NaN;                      % set inside the parfor iteration (silences the temporary-variable warning)
             for c = 1:ncomp
                 [Vsnap,t]=gather_snap(snapinfo{r},id,ly,comps{c},'outdir',pnm_out{r});
                 V2 = squeeze(Vsnap);
