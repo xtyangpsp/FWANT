@@ -59,13 +59,22 @@ stnfile = [ PROJHOME '/STinfo/station_riogrande_withdata_formatok.txt'];
 run_x = 'fx';            % run folder with the unit force toward +x (south)
 run_y = 'fy';            % run folder with the unit force toward +y (east)
 
+% Defaults = only what the Love (TT) imaging workflow needs:
+%   fT.UT         TT displacement      -> phase-delay measurement (synthetic)
+%   fT.Vx, fT.Vy  x,y velocity for T_s -> kernel step (kern_synthetic4kernel_fxfy.m)
+%   <src>.azimuth.txt                  -> kernel configuration (always written)
 do_rotate     = true;    % true: build TT/RR/transverse-force responses; false: save raw fx and fy only
-save_RR       = true;    % also save RR (only used if do_rotate)
-save_XYZ      = true;    % save fT.Vx, fT.Vy (needed by the kernel step; only used if do_rotate)
-save_Z        = true;    % include fT.Vz (only the original SI_ker_sta.F90 reads it; SI_ker_sta_fxyz.F90 does not)
+save_disp_TT  = true;    % TT (and RR) displacement SAC: fT.UT   [needed]
+save_XYZ      = true;    % fT.Vx, fT.Vy   [needed by the kernel step; only used if do_rotate]
+save_vel_TT   = false;   % TT (and RR) velocity SAC: fT.VT  (not used downstream)
+save_RR       = false;   % also build RR (fR.UR / fR.VR) for quality checks only
+save_Z        = false;   % fT.Vz (only the original SI_ker_sta.F90 reads it; SI_ker_sta_fxyz.F90 does not)
 save_raw      = false;   % additionally save the unrotated fx/fy responses (always on if do_rotate = false)
-save_disp_TT  = true;    % displacement SAC for TT and RR
 save_disp_XYZ = false;   % displacement SAC for fT.x/y/z and raw (kern_synthetic4kernel integrates velocity itself)
+
+fast_read     = true;    % read many time layers per NetCDF open (block read) instead of one gather_snap call per layer and component;
+                         % the first layer of every source is checked against gather_snap. false = original slow path.
+tblk          = 100;     % max number of time layers per block read (memory ~ tblk*nx*ny*ncomp doubles per worker)
 
 %% ===================== station info =====================
 fid = fopen(stnfile);
@@ -86,7 +95,7 @@ pnm_metric = sim_input;
 % snap_002 is the velocity output on the free surface
 id=2;subs=[1,1,1];subc=[-1,-1,-1];subt=[1,1,1];
 n1=1;dn=1;
-n2=4000; % steps saved every dn steps. n2 should be <= saved time steps.
+n2=4000; % steps saved every dn steps. n2 should be <= saved time steps.  (must equal what your fz run used: the snapshot reading time scales with it)
 layers=n1:dn:n2;
 nlayers=length(layers);
 
@@ -103,8 +112,8 @@ if needZ, ncomp = 3; else, ncomp = 2; end
 %   id 1 = TT, 2 = RR, 3/4/5 = x/y/z response to T_s force, 6..11 = raw (6 + (run-1)*3 + comp-1)
 spec = cell(0,4);
 if do_rotate
-    spec(end+1,:) = {'fT','VT',dname('UT',save_disp_TT),1};
-    if save_RR,  spec(end+1,:) = {'fR','VR',dname('UR',save_disp_TT),2}; end
+    spec(end+1,:) = {'fT',dname('VT',save_vel_TT),dname('UT',save_disp_TT),1};
+    if save_RR,  spec(end+1,:) = {'fR',dname('VR',save_vel_TT),dname('UR',save_disp_TT),2}; end
     if save_XYZ
         spec(end+1,:) = {'fT','Vx',dname('Ux',save_disp_XYZ),3};
         spec(end+1,:) = {'fT','Vy',dname('Uy',save_disp_XYZ),4};
@@ -120,7 +129,7 @@ if save_raw
     end
 end
 nspec = size(spec,1);
-nfile_per_pair = nspec + sum(~cellfun(@isempty,spec(:,3)));
+nfile_per_pair = sum(~cellfun(@isempty,spec(:,2))) + sum(~cellfun(@isempty,spec(:,3)));
 nfile_expected = nfile_per_pair*(nrecv-1);      % self pair is skipped
 fprintf('%d SAC files per station pair, %d per virtual source\n', nfile_per_pair, nfile_expected);
 
@@ -197,23 +206,58 @@ parfor nstsrc=1:nrecv %
     A = nan(nlayers,nrecv,ncomp,2,'single');
     T = nan(nlayers,2);
     tload = tic;
-    for j=1:nlayers
-        ly=layers(j);
+    if fast_read && n1 == 1 && dn == 1
+        % ---- block read: several time layers per file open ----
         for r = 1:2
-            t = NaN;                      % set inside the parfor iteration (silences the temporary-variable warning)
-            for c = 1:ncomp
-                [Vsnap,t]=gather_snap(snapinfo{r},id,ly,comps{c},'outdir',pnm_out{r});
-                V2 = squeeze(Vsnap);
-                vq = nan(nrecv,1);
-                vq(ok) = w00.*V2(l00) + w10.*V2(l10) + w01.*V2(l01) + w11.*V2(l11);
-                A(j,:,c,r) = single(vq');
+            tcnt = snapinfo{r}(1).tcnt;               % time layers stored per NetCDF file
+            L = 1;
+            while L <= nlayers
+                nofnc  = fix((L-1)/tcnt) + 1;
+                ninnc0 = mod(L-1,tcnt);
+                nt = min([tblk, tcnt-ninnc0, nlayers-L+1]);
+                [B,tv] = read_snap_block(snapinfo{r},id,nofnc,ninnc0,nt,comps(1:ncomp),pnm_out{r},nx,ny);
+                if L == 1                              % check against the original reader
+                    [Vchk,tchk] = gather_snap(snapinfo{r},id,1,comps{1},'outdir',pnm_out{r});
+                    Vchk = squeeze(Vchk);
+                    Vnew = reshape(B(1,:,:,1),nx,ny);
+                    if max(abs(Vchk(:)-Vnew(:))) > 1e-6*max(abs(Vchk(:))) || abs(tchk-tv(1)) > 1e-9
+                        error('%s: block read differs from gather_snap (run %d); set fast_read=false.', event_name, r);
+                    end
+                end
+                for jj = 1:nt
+                    for c = 1:ncomp
+                        V2 = reshape(B(jj,:,:,c),nx,ny);
+                        vq = nan(nrecv,1);
+                        vq(ok) = w00.*V2(l00) + w10.*V2(l10) + w01.*V2(l01) + w11.*V2(l11);
+                        A(L+jj-1,:,c,r) = single(vq');
+                    end
+                    T(L+jj-1,r) = tv(jj);
+                end
+                L = L + nt;
+                if r == 1 || L > nlayers
+                    fprintf('  %s: run %d, %d/%d layers read (%.0f s)\n', event_name, r, L-1, nlayers, toc(tload));
+                end
             end
-            T(j,r) = t;
         end
-        if mod(j,500) == 0 || j == nlayers
-            fprintf('  %s: %d/%d layers read (%.0f s)\n', event_name, j, nlayers, toc(tload));
-        end
-    end  % end of nlayer
+    else
+        for j=1:nlayers
+            ly=layers(j);
+            for r = 1:2
+                t = NaN;                      % set inside the parfor iteration (silences the temporary-variable warning)
+                for c = 1:ncomp
+                    [Vsnap,t]=gather_snap(snapinfo{r},id,ly,comps{c},'outdir',pnm_out{r});
+                    V2 = squeeze(Vsnap);
+                    vq = nan(nrecv,1);
+                    vq(ok) = w00.*V2(l00) + w10.*V2(l10) + w01.*V2(l01) + w11.*V2(l11);
+                    A(j,:,c,r) = single(vq');
+                end
+                T(j,r) = t;
+            end
+            if mod(j,500) == 0 || j == nlayers
+                fprintf('  %s: %d/%d layers read (%.0f s)\n', event_name, j, nlayers, toc(tload));
+            end
+        end  % end of nlayer
+    end
     if max(abs(T(:,1)-T(:,2))) > 1e-6
         error('%s: fx and fy snapshots have different time axes.', event_name);
     end
@@ -272,7 +316,7 @@ parfor nstsrc=1:nrecv %
                 'DIST',disttemp);
             try, S = ch(S,'AZ',a,'BAZ',b); catch, end
             fbase = [OUTPUT_ROOT '/' event_name '.to.' recvname '.' fcomp '.'];
-            wsac([fbase vname '.SAC'],S);
+            if ~isempty(vname), wsac([fbase vname '.SAC'],S); end     % velocity
             if ~isempty(uname)                                         % displacement
                 u = cumtrapz(v)*dt;
                 S = bsac(tt,u);
@@ -288,6 +332,37 @@ parfor nstsrc=1:nrecv %
 end  % end of source
 
 %% ===================== local functions =====================
+function [B,tv] = read_snap_block(snapinfo,id,nofnc,ninnc0,nt,comps,pnm_out,nx,ny)
+% Surface velocity of nt consecutive time layers (layers ninnc0 .. ninnc0+nt-1 of file number nofnc)
+% from all subdomain files, assembled on the (nx,ny) grid:  B(layer,i,j,component), plus times tv.
+% Same file layout and indexing as gather_snap, but one open per file and component for nt layers
+% instead of one per layer.  (Free-surface snapshot: the vertical dimension must be 1.)
+nthd = length(snapinfo);
+ncomp = numel(comps);
+B = zeros(nt,nx,ny,ncomp);
+tv = [];
+for n = 1:nthd
+    n_i=snapinfo(n).thisid(1); n_j=snapinfo(n).thisid(2); n_k=snapinfo(n).thisid(3);
+    i1=snapinfo(n).indxs(1); j1=snapinfo(n).indxs(2); k1=snapinfo(n).indxs(3);
+    i2=snapinfo(n).indxe(1); j2=snapinfo(n).indxe(2); k2=snapinfo(n).indxe(3);
+    subs=snapinfo(n).subs; subc=snapinfo(n).subc; subt=snapinfo(n).subt;
+    if k2 ~= k1, error('read_snap_block: expected a free-surface snapshot (one vertical index), set fast_read=false.'); end
+    fnm_snap = get_fnm_snap(pnm_out,'vel_',n_i,n_j,n_k,id,nofnc);
+    if ~exist(fnm_snap,'file'), error('read_snap_block: file %s does not exist',fnm_snap); end
+    tdim = nc_getdiminfo(fnm_snap,'time');
+    if tdim.Length < ninnc0+nt
+        error('read_snap_block: layers %d-%d are beyond the time dim (%d) in %s',ninnc0+1,ninnc0+nt,tdim.Length,fnm_snap);
+    end
+    ni = i2-i1+1;  nj = j2-j1+1;
+    for c = 1:ncomp
+        d = nc_varget(fnm_snap,comps{c},[ninnc0,fliplr(subs)-1],[nt,fliplr(subc)],[1,fliplr(subt)]);
+        d = reshape(d,[nt,nj,ni]);                 % (time, j, i); the vertical dimension is 1
+        B(:,i1:i2,j1:j2,c) = permute(d,[1 3 2]);   % (time, i, j)
+    end
+    if n == 1, tv = nc_varget(fnm_snap,'time',ninnc0,nt); tv = tv(:); end
+end
+end
+
 function s = dname(name, flag)
 if flag, s = name; else, s = ''; end
 end
