@@ -19,26 +19,24 @@ addpath(genpath('/depot/xtyang/data/codes/MatNoise/src'))
 
 %%%%%%%%%%%%%%% Parameter section 1: users should modify for each project
 %%%%%%%%%%%%%%% and iteration
-% PROJHOME = '/Users/xtyang/Work/Research/Projects/Chicxulub';
-%PROJHOME = '/depot/xtyang/data/projects/xtyang/Chicxulub';
-PROJHOME = '/Volumes/xtyang/data/projects/xtyang/Chicxulub';
-ite = '/ite_0.002deg_01';
+PROJHOME = '/depot/xtyang/data/projects/xtyang/RioGrande/FWANT_ZZ';
+%PROJHOME = '/Volumes/xtyang/data/projects/xtyang/RioGrande/FWANT_ZZ';
+ite = '/ite_0.025deg_02';
 wkdir = [PROJHOME ite];
-egfdir = [PROJHOME '/data/data_chicxulub/PAIRS_TWOSIDES_ftn_gaussian_a0.5t1.5'];
+egfdir = [PROJHOME '/data/data_riogrande/PAIRS_TWOSIDES_gaussian_a1t3'];
 syndir = [wkdir '/syn.seismograms'];
 outdir = [wkdir '/measure/measure_stnpair'];
 plotdir = strcat(wkdir,'/measure/plots_test');
-stainfo = [PROJHOME '/STinfo/station_chicxulub_withdata_formatok.txt'];
+stainfo = [PROJHOME '/STinfo/station_riogrande_withdata_formatok.txt'];
 
-pband=[2 4; 3 6; 4 7; 5 9];
-% pband=[1.5 3; 2 4; 3 6; 4 8; 5 10];
+pband=[7.5 15; 10 20; 15 30; 20 40; 30 55; 40 70];
 fband = flip(1./pband,2);
 
 % max_dV and max_dT are combined in checking the phase delays to make sure
 % they are within the allowed perturbation range and to avoid
 % cycle-skipping
-max_dV = 0.15;
-max_dT = 3;
+max_dV = 0.2;
+max_dT = 10;
 
 % Additional cycle-skip guard: cap the max cross-correlation lag (and the
 % QC delay-acceptance bound) at this fraction of each band's own mean
@@ -51,32 +49,32 @@ maxlag_period_fraction = 0.5;
 
 % QC to save phase delays.
 snr_cutoff = 5;
-xcoeff_cutoff = 0.6;
-min_wavelength = 1.5; %
+xcoeff_cutoff = 0.7;
+min_wavelength = 1.; %
 maxdelay_scaling_buffer=0.99; %measured delay needs to be within this scaling for maxdelay.
 min_substack = 3;
 
 % dt in seconds.
-dt_resample=0.05;
-dt_egf = 0.1;
+dt_resample=0.1;
+dt_egf = 0.2;
 
-tmaximum=100.0;   %max length of the synthetic EGFs
-tmaximumegf=200.0; % length of the observed EGFs
+tmaximum=800.0;   %max length of the synthetic EGFs
+tmaximumegf=1000.0; % length of the observed EGFs
 
 d_taper_period_scale = 0.5; % taper length in time scales with the dominant period.
 
-v_search_grid = 1.:0.1:4.0; %velocity range for velocity analysis to decide the best signal window
-cmax_default=linspace(1.5,2.5,size(pband,1)); %if velocity analysis failed, fall back to these default velocities to search for the phase delays.
-search_window_dist_scaling = 0.1; %increasing window width with distance to account for the spreadout of wavetrain.
+v_search_grid = 2.:0.1:5.5; %velocity range for velocity analysis to decide the best signal window
+cmax_default=linspace(3,5,size(pband,1)); %if velocity analysis failed, fall back to these default velocities to search for the phase delays.
+search_window_dist_scaling = 0.17; %increasing window width with distance to account for the spreadout of wavetrain.
 
-syn_shaping_tshift = 1.5; %time shift in shaping wavelet, same as in synthetics.
+syn_shaping_tshift = 3; %time shift in shaping wavelet, same as in synthetics.
 % Scaling factors for each frequency band (one for each row in fband)
 % Increase these for higher frequencies to capture scattering/coda
-win_scales = [3, 2, 2, 2];
-model_grid_spacing=0.002;
+win_scales = [5, 5, 2.5, 2, 1.5, 1];
+model_grid_spacing=0.025;
 
 %plot control
-fig_flag = 0;  %turn off for parfor.
+fig_flag = 1;  %turn off for parfor.
 save_fig=0;
 
 %save the measured phase delay or not.
@@ -122,7 +120,7 @@ if ~exist(plotdir,'dir'); system(['mkdir ' plotdir]); end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-for ii = 1:nsource
+for ii = 162:nsource
     source = sourcelist{ii};
     disp([num2str(ii),' --> ',source]);
     synfilelist=dir([syndir,'/',source,'/*',synfileext]);
@@ -160,133 +158,141 @@ for ii = 1:nsource
     all_egfs_subset = all_egfs(valid_pair_idx);
     all_dists_subset = all_dists(valid_pair_idx);
     npairs_valid = length(valid_pair_idx);
-    if npairs_valid < 1; continue; end
-    npts_egf = length(all_egfs_subset{1});
-    if npts_egf - 1 > round(tmaximumegf/dt_egf)
-        disp('npts of egf is inconsistent with the specified length.')
-    end
-    taxis_egf = (0:npts_egf-1)*dt_egf;
-
-
-    %
-    if fig_flag
-        fig_1=figure('Position',[400 400 1000 650]);
-        fig_2=figure('Position',[400 400 1000 650]);
-    end
-    best_v_source = zeros(nfb, 1);
-    for k = 1:nfb
-        w_taper_egf = tukeywin(npts_egf,taperfraction_egf(k));
-        energy_results = zeros(length(v_search_grid), 1);
-        [b, a] = butter(N, [fband(k,1) fband(k,2)] / (1/dt_egf/2));
-        for iv = 1:length(v_search_grid)
-            v_test = v_search_grid(iv);
-            stack_energy = 0;
-            for idx = 1:npairs_valid
-                if size(all_egfs_subset{idx},1) > npts_egf; continue; end
-                temp_data = filtfilt(b, a, all_egfs_subset{idx}) .* w_taper_egf;
-                temp_data = temp_data/max(abs(temp_data));
-                t_arrival = syn_shaping_tshift + all_dists_subset(idx) / v_test;
-                it_arrival = round(t_arrival / dt_egf);
-                win_samples = round((all_dists_subset(idx)*search_window_dist_scaling + 0.5*win_scales(k)*tfmin(k)) / dt_egf);
-                if it_arrival > win_samples && (it_arrival + win_samples) < length(temp_data)
-                    env = abs(hilbert(temp_data(it_arrival-win_samples : it_arrival+win_samples)));
-                    stack_energy = stack_energy + sum(env);
-                end
-            end
-            energy_results(iv) = stack_energy;
+    if npairs_valid < 1
+        continue
+    elseif npairs_valid == 1
+        best_v_source = cmax_default;
+        disp('Only one pair available. Use default group velocities for all frequencies.')
+    else
+        npts_egf = length(all_egfs_subset{1});
+        if npts_egf - 1 > round(tmaximumegf/dt_egf)
+            disp('npts of egf is inconsistent with the specified length.')
         end
-        [~, max_idx] = max(energy_results);
-        if max(energy_results) == 0
-            disp(['1st round velocity analysis returned 0 energy. Fall back to default velocity for source ',source, ' at frequency index ',num2str(k)])
-            best_v_alldist = cmax_default(k);
-        else
-            best_v_alldist = v_search_grid(max_idx);
-        end
-
-        %second search to redo it after excluding the near-source stations,
-        %defined by min_wavelength and the 1st round velocity.
-        %in this search, we also QC to only consider SNR>snr_cutoff
-        %signal is computed based on the velocity anlaysis result from
-        %round one
-
-        for iv = 1:length(v_search_grid)
-            v_test = v_search_grid(iv);
-            stack_energy = 0;
-            for idx = 1:npairs_valid
-                if size(all_egfs_subset{idx},1) > npts_egf; continue; end
-                min_dist = min_wavelength * tfmin(k) * best_v_alldist;
-                if all_dists_subset(idx) < min_dist; continue; end %skip near source stations.
-
-                temp_data = filtfilt(b, a, all_egfs_subset{idx}) .* w_taper_egf;
-                temp_data = temp_data/max(abs(temp_data));
-
-                t_arrival = syn_shaping_tshift + all_dists_subset(idx) / v_test;
-                it_arrival = round(t_arrival / dt_egf);
-                win_samples = round((all_dists_subset(idx)*search_window_dist_scaling + 0.5*win_scales(k)*tfmin(k)) / dt_egf);
-                if it_arrival > win_samples && (it_arrival + win_samples) < length(temp_data)
-                    %compute SNR
-                    temp_signal = temp_data(it_arrival-win_samples+1 : it_arrival+win_samples);
-                    temp_noise = [temp_data(1:max(2,it_arrival - win_samples));...
-                        temp_data(min(it_arrival + win_samples + 1,npts_egf-win_samples):npts_egf)];
-
-                    temp_snr = rms(abs(temp_signal))/rms(abs(temp_noise));
-                    if temp_snr < snr_cutoff; continue;end
-                    env = abs(hilbert(temp_signal));
-                    stack_energy = stack_energy + sum(env);
-                end
-            end
-            energy_results(iv) = stack_energy;
-        end
-        [~, max_idx] = max(energy_results);
-        if max(energy_results) == 0
-            disp(['2nd round velocity analysis returned 0 energy. Fall back to default velocity for source ',source, ' at frequency index ',num2str(k)])
-            best_v_source(k) = cmax_default(k);
-        else
-            best_v_source(k) = v_search_grid(max_idx);
-        end
-        %plot moveout for each frequency
+        taxis_egf = (0:npts_egf-1)*dt_egf;
+    
+    
+        %
         if fig_flag
-            %energy curves.
-            figure(fig_1);
-            subplot(2,ceil(nfb/2),k); hold on;
-            plot(v_search_grid,energy_results)
-            hold on
-            plot([best_v_source(k) best_v_source(k)],[min(energy_results) max(energy_results)],'r')
-            hold off
-            xlabel('test velocities (km/s)')
-            ylabel('stacked amplitudes')
-            box on;
-            title([source,' at ',num2str(pband(k,1)),'-',num2str(pband(k,2)),' s: ',num2str(best_v_source(k)),' km/s'])
-
-            %moveout wiggles
-            figure(fig_2)
-            subplot(2,ceil(nfb/2),k); hold on;
-            wiggle_scale=0.01*range(all_dists_subset);
-            for idx = 1:npairs_valid
-                temp_data = filtfilt(b, a, all_egfs_subset{idx}).*w_taper_egf;
-                temp_data = temp_data/max(abs(temp_data));
-                plot(taxis_egf,all_dists_subset(idx)+wiggle_scale*temp_data,'k')
+            fig_1=figure('Position',[400 400 1000 650]);
+            fig_2=figure('Position',[400 400 1000 650]);
+        end
+        best_v_source = zeros(nfb, 1);
+        for k = 1:nfb
+            w_taper_egf = tukeywin(npts_egf,taperfraction_egf(k));
+            energy_results = zeros(length(v_search_grid), 1);
+            [b, a] = butter(N, [fband(k,1) fband(k,2)] / (1/dt_egf/2));
+            for iv = 1:length(v_search_grid)
+                v_test = v_search_grid(iv);
+                stack_energy = 0;
+                for idx = 1:npairs_valid
+                    if size(all_egfs_subset{idx},1) > npts_egf; continue; end
+                    temp_data = filtfilt(b, a, all_egfs_subset{idx}) .* w_taper_egf;
+                    temp_data = temp_data/max(abs(temp_data));
+                    t_arrival = syn_shaping_tshift + all_dists_subset(idx) / v_test;
+                    it_arrival = round(t_arrival / dt_egf);
+                    win_samples = round((all_dists_subset(idx)*search_window_dist_scaling + 0.5*win_scales(k)*tfmin(k)) / dt_egf);
+                    if it_arrival > win_samples && (it_arrival + win_samples) < length(temp_data)
+                        env = abs(hilbert(temp_data(it_arrival-win_samples : it_arrival+win_samples)));
+                        stack_energy = stack_energy + sum(env);
+                    end
+                end
+                energy_results(iv) = stack_energy;
             end
-            %plot the best velocity line
-            plot(taxis_egf + syn_shaping_tshift,best_v_source(k)*taxis_egf,'r')
-            ylim([min(all_dists_subset)-wiggle_scale max(all_dists_subset)+wiggle_scale])
-            box on;
-            hold off
-            title([source,' at ',num2str(pband(k,1)),'-',num2str(pband(k,2)),' s: ',num2str(best_v_source(k)),' km/s'])
-            xlim([0 min([2.5*max(all_dists_subset)/best_v_source(k),max(taxis_egf)])])
-            xlabel('time (s)')
-            ylabel('distance (km)')
-            set(gca,'TickDir','out')
-
-            if save_fig
-                saveas(gcf, fullfile(plotdir, [source, '_moveout_velocity.png']))
+            [~, max_idx] = max(energy_results);
+            if max(energy_results) == 0
+                disp(['1st round velocity analysis returned 0 energy. Fall back to default velocity for source ',source, ' at frequency index ',num2str(k)])
+                best_v_alldist = cmax_default(k);
+            else
+                best_v_alldist = v_search_grid(max_idx);
+            end
+    
+            %second search to redo it after excluding the near-source stations,
+            %defined by min_wavelength and the 1st round velocity.
+            %in this search, we also QC to only consider SNR>snr_cutoff
+            %signal is computed based on the velocity anlaysis result from
+            %round one
+    
+            for iv = 1:length(v_search_grid)
+                v_test = v_search_grid(iv);
+                stack_energy = 0;
+                for idx = 1:npairs_valid
+                    if size(all_egfs_subset{idx},1) > npts_egf; continue; end
+                    min_dist = min_wavelength * tfmin(k) * best_v_alldist;
+                    if all_dists_subset(idx) < min_dist; continue; end %skip near source stations.
+    
+                    temp_data = filtfilt(b, a, all_egfs_subset{idx}) .* w_taper_egf;
+                    temp_data = temp_data/max(abs(temp_data));
+    
+                    t_arrival = syn_shaping_tshift + all_dists_subset(idx) / v_test;
+                    it_arrival = round(t_arrival / dt_egf);
+                    win_samples = round((all_dists_subset(idx)*search_window_dist_scaling + 0.5*win_scales(k)*tfmin(k)) / dt_egf);
+                    if it_arrival > win_samples && (it_arrival + win_samples) < length(temp_data)
+                        %compute SNR
+                        temp_signal = temp_data(it_arrival-win_samples+1 : it_arrival+win_samples);
+                        temp_noise = [temp_data(1:max(2,it_arrival - win_samples));...
+                            temp_data(min(it_arrival + win_samples + 1,npts_egf-win_samples):npts_egf)];
+    
+                        temp_snr = rms(abs(temp_signal))/rms(abs(temp_noise));
+                        if temp_snr < snr_cutoff; continue;end
+                        env = abs(hilbert(temp_signal));
+                        stack_energy = stack_energy + sum(env);
+                    end
+                end
+                energy_results(iv) = stack_energy;
+            end
+            [~, max_idx] = max(energy_results);
+            if max(energy_results) == 0
+                disp(['2nd round velocity analysis returned 0 energy. Fall back to default velocity for source ',source, ' at frequency index ',num2str(k)])
+                best_v_source(k) = cmax_default(k);
+            else
+                best_v_source(k) = v_search_grid(max_idx);
+            end
+            %plot moveout for each frequency
+            if fig_flag
+                %energy curves.
+                figure(fig_1);
+                subplot(2,ceil(nfb/2),k); hold on;
+                plot(v_search_grid,energy_results)
+                hold on
+                plot([best_v_source(k) best_v_source(k)],[min(energy_results) max(energy_results)],'r')
+                hold off
+                xlabel('test velocities (km/s)')
+                ylabel('stacked amplitudes')
+                box on;
+                title([source,' at ',num2str(pband(k,1)),'-',num2str(pband(k,2)),' s: ',num2str(best_v_source(k)),' km/s'])
+                if save_fig
+                    saveas(gcf, fullfile(plotdir, [source, '_moveout_energy.png']))
+                end
+                %moveout wiggles
+                figure(fig_2)
+                subplot(2,ceil(nfb/2),k); hold on;
+                wiggle_scale=0.01*range(all_dists_subset);
+                for idx = 1:npairs_valid
+                    temp_data = filtfilt(b, a, all_egfs_subset{idx}).*w_taper_egf;
+                    temp_data = temp_data/max(abs(temp_data));
+                    plot(taxis_egf,all_dists_subset(idx)+wiggle_scale*temp_data,'k')
+                end
+                %plot the best velocity line
+                plot(taxis_egf + syn_shaping_tshift,best_v_source(k)*taxis_egf,'r')
+                ylim([min(all_dists_subset)-wiggle_scale max(all_dists_subset)+wiggle_scale])
+                box on;
+                hold off
+                title([source,' at ',num2str(pband(k,1)),'-',num2str(pband(k,2)),' s: ',num2str(best_v_source(k)),' km/s'])
+                xlim([0 min([2.5*max(all_dists_subset)/best_v_source(k),max(taxis_egf)])])
+                xlabel('time (s)')
+                ylabel('distance (km)')
+                set(gca,'TickDir','out')
+    
+                if save_fig
+                    saveas(gcf, fullfile(plotdir, [source, '_moveout_velocity.png']))
+                end
             end
         end
     end
     disp(['Best velocity for source ',source])
     best_v_source
     % result_strings collects output to avoid FID conflicts
-%     error('test')
+    % error('test')
     result_strings = cell(npairs, 1);
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

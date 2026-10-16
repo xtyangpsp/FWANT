@@ -1,7 +1,7 @@
 #!/bin/csh
-set wkdir = /home/xtyang/depot-projects/xtyang/craton
-set current_ite = ite_0.05deg_07
-set next_ite = ite_0.05deg_08
+set wkdir = /depot/xtyang/data/projects/xtyang/RioGrande/FWANT_ZZ
+set current_ite = ite_0.025deg_02
+set next_ite = ite_0.025deg_03
 set citedir = $wkdir/$current_ite
 set nitedir = $wkdir/$next_ite
 if ( ! ( -e $nitedir ) ) then
@@ -32,6 +32,7 @@ echo "setup sim.station"
 set subdir = sim.station
 cd $subdir
 set targetdir = $wkdir/$next_ite/$subdir
+rsync -avz bin $targetdir/
 cp *.sh $targetdir
 cp *.csh $targetdir
 cp *.m $targetdir
@@ -43,10 +44,9 @@ set next_SeisFD3D = $targetdir/skel/fx/SeisFD3D.conf
 /bin/cp $current_SeisFD3D $next_SeisFD3D
 # link bin
 cd skel/fx
-ln -s ../../../code/bin .
+ln -s ../../bin .
 ln -s ../../../sim.input input
 cd ../../
-ln -s ../../code/bin .
 cd ..
 
 # syn.seismograms
@@ -58,6 +58,9 @@ cp *.m $targetdir
 cp *.csh $targetdir
 cp *.sh $targetdir
 cp README $targetdir
+#change iteration number.
+sed -e 's/'${current_ite}'/'${next_ite}'/g' snap2sac_spher.m > ${targetdir}/snap2sac_spher.m
+
 cd ..
 
 # measure
@@ -68,6 +71,12 @@ set targetdir = $wkdir/$next_ite/$subdir
 cp *.csh $targetdir
 cp *.sh $targetdir
 cp *.m $targetdir
+cp *.py $targetdir
+#change iteration number.
+#sed -e 's/'${current_ite}'/'${next_ite}'/g' measure_phase_delay.m > ${targetdir}/measure_phase_delay.m
+#sed -e 's/'${current_ite}'/'${next_ite}'/g' measure_phase_delay_velocityanalysis.m > ${targetdir}/measure_phase_delay_velocityanalysis.m
+sed -e 's/'${current_ite}'/'${next_ite}'/g' measure_phase_delay_velocityanalysis_oneside.m > ${targetdir}/measure_phase_delay_velocityanalysis_oneside.m
+sed -e 's/'${current_ite}'/'${next_ite}'/g' assemble_measure.csh > ${targetdir}/assemble_measure.csh
 cp README $targetdir
 cd ..
 
@@ -85,8 +94,11 @@ cp butter.bp* $targetdir
 set next_SeisFD3D = $targetdir/SeisFD3D.conf
 /bin/cp $current_SeisFD3D $next_SeisFD3D
 cp TomoKernel.conf $targetdir
+#change iteration number.
+sed -e 's/'${current_ite}'/'${next_ite}'/g' kern_synthetic4kernel.m > ${targetdir}/kern_synthetic4kernel.m
+sed -e 's/'${current_ite}'/'${next_ite}'/g' kern_measure2kernelconf.sh > ${targetdir}/kern_measure2kernelconf.sh
 cd $targetdir 
-ln -s ../../code/bin bin
+rsync -avz ${citedir}/sim.kernel/bin .
 ln -s ../sim.input input
 cd $citedir
 
@@ -99,6 +111,7 @@ cp block*.dat $targetdir
 cp block*.nc $targetdir
 cp README $targetdir
 rsync -avz Codes $targetdir/
+
 set locmodeldir = FreqAll.Z.model
 set targetmodeldir = $targetdir/FreqAll.Z.model
 if ( ! ( -e $targetmodeldir ) ) mkdir $targetmodeldir
@@ -106,7 +119,16 @@ cd $locmodeldir
 cp *.sh $targetmodeldir
 cp *.csh $targetmodeldir
 cp *.m $targetmodeldir
+#change iteration number.
+sed -e 's/'${current_ite}'/'${next_ite}'/g' make_inv_Gd_list.sh > ${targetmodeldir}/make_inv_Gd_list.sh
+sed -e 's/'${current_ite}'/'${next_ite}'/g' mk_st_list.csh > ${targetmodeldir}/mk_st_list.csh
+
+#needed here only when running inversion in subsampling bootstrapping method.
+mkdir $targetmodeldir/subsamples
+rsync -avz subsamples/*.m subsamples/*.sh subsamples/README $targetmodeldir/subsamples/
+
 cp *_list $targetmodeldir
+rm $targetmodeldir/inv_Gd_list $targetmodeldir/inv_ev_list $targetmodeldir/inv_st_list
 cp *.dat $targetmodeldir
 cd ..
 cd ..
