@@ -42,7 +42,7 @@ addpath(genpath('/depot/xtyang/data/codes/MatNoise'))
 addpath(genpath('/depot/xtyang/data/codes/FWANT/Codes/MatlabFiles'))
 
 %% ===================== project (CHANGE for the TT project) =====================
-PROJHOME = ['/depot/xtyang/data/projects/xtyang/RioGrande/FWANT_ZZ'];
+PROJHOME = ['/depot/xtyang/data/projects/xtyang/RioGrande/FWANT_TT'];
 ite = ['/ite_0.025deg_01'];
 ite_num = [PROJHOME ite];
 sim_dir = [PROJHOME '/' ite '/sim.station'];
@@ -210,6 +210,7 @@ parfor nstsrc=1:nrecv %
         % ---- block read: several time layers per file open ----
         for r = 1:2
             tcnt = snapinfo{r}(1).tcnt;               % time layers stored per NetCDF file
+            if r == 1, fprintf('  %s: tcnt = %d layers per file (from SeisFD3D.conf), tblk = %d, block = %d layers\n', event_name, tcnt, tblk, min(tblk,tcnt)); end
             L = 1;
             while L <= nlayers
                 nofnc  = fix((L-1)/tcnt) + 1;
