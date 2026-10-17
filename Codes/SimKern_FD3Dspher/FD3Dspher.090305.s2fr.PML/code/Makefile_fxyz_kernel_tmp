@@ -1,0 +1,202 @@
+#******************************************************************************#
+#*   TEMPORARY makefile: compile ONLY the new kernel code SI_ker_sta_fxyz     *#
+#*   (serial and MPI executables), single (SP) and double (DP) precision.     *#
+#*                                                                            *#
+#*   Settings are taken from Makefile_gautschi (same preprocessor flags,      *#
+#*   same compiler options, same directory naming), so the module objects     *#
+#*   are identical to those of the full build.  Nothing else is compiled      *#
+#*   (no grid, media, source, station, wave or other kernel codes).           *#
+#******************************************************************************#
+#
+# Put this file in  .../FD3Dspher.090305.s2fr.PML/code/  next to Makefile_gautschi.
+# Source needed:    srcF.kernel/SI_ker_sta_fxyz.F90   (+ the usual srcF/*.F90 modules)
+#
+# Load the modules first (same as run.make.sh):
+#   module --force purge
+#   ml intel/2024.1 impi/2021.12 hdf5/1.14.3 netcdf-c/4.9.2 netcdf-fortran/4.6.1
+#
+# Usage:
+#   make -f Makefile_fxyz_kernel_tmp both       # SP then DP (two sub-makes)
+#   make -f Makefile_fxyz_kernel_tmp sp         # single precision only
+#   make -f Makefile_fxyz_kernel_tmp dp         # double precision only
+#   make -f Makefile_fxyz_kernel_tmp            # same as "make DP=0": SP, serial + MPI exe
+#   make -f Makefile_fxyz_kernel_tmp DP=1       # double precision, serial + MPI exe
+#   make -f Makefile_fxyz_kernel_tmp OMP=1 both # also enable the OpenMP loops of the kernel
+#   make -f Makefile_fxyz_kernel_tmp SPTRUE=1 sp  # REAL single precision (see note below)
+#   make -f Makefile_fxyz_kernel_tmp clean      # remove OBJ/bin/src of the chosen precision
+#   make -f Makefile_fxyz_kernel_tmp cleanboth  # remove both precisions (and _omp variants)
+#
+# Output (same folders as the full build):
+#   bin_gautschi_SP/SI_ker_sta_fxyz    bin_gautschi_SP/SI_ker_sta_fxyz_mpi
+#   bin_gautschi_DP/SI_ker_sta_fxyz    bin_gautschi_DP/SI_ker_sta_fxyz_mpi
+#   (OMP=1 builds go to  *_SP_omp / *_DP_omp;  SPTRUE=1 builds to *_SPtrue)
+#
+# Run serial make (no -j): the module objects are listed in dependency order.
+#
+# SP and DP: the kernel source has no precision-specific code.  Everything typed
+# real(SP) follows the flag (constants_mod: SP = single, or double if
+# -DDataTypeDouble is defined); real(DP) is always double.
+#
+# !! IMPORTANT: in Makefile_gautschi the "SP" build ALSO defines -DDataTypeDouble.
+# !! DFLAGS is built with  $(if $($(flag)),-D$(flag),)  and DataTypeDouble is set to
+# !! the string OFF for SP, which is non-empty and therefore "true".  Check with:
+# !!    make -f Makefile_gautschi -pn | grep '^DFLAGS'     (with and without DP=1)
+# !! So the binaries of the full build called SP are compiled in DOUBLE precision.
+# !! To stay compatible with them (kernel files are unformatted binary read by
+# !! SI_ker2assm and the solver), THIS file reproduces that behaviour by default:
+# !!    make ...            -> "SP" folders (bin_gautschi_SP): identical flags to DP
+# !!    make ... DP=1       -> "DP" folders
+# !! For REAL single precision use SPTRUE=1 (folders ..._SPtrue).  Only do that if
+# !! all other programs that read the kernel files are also built in true single.
+
+CLUSTER  := gautschi
+WHEREAMI := purdue_${CLUSTER}_intel
+MKFILE   := $(lastword $(MAKEFILE_LIST))
+
+#######################################################################
+#  preprocessor flags: identical to Makefile_gautschi                 #
+#######################################################################
+USEOMP :=ON
+USEPML := ON
+ifeq ($(DP), 1)
+    DataTypeDouble := ON
+    PREC := DP
+else
+    # OFF is a non-empty string: with the DFLAGS rule below it still defines
+    # -DDataTypeDouble, exactly like Makefile_gautschi
+    DataTypeDouble := OFF
+    PREC := SP
+    ifeq ($(SPTRUE), 1)
+        # real single precision: leave DataTypeDouble empty so no flag is defined
+        DataTypeDouble :=
+        PREC := SPtrue
+    endif
+endif
+SrcSmooth :=ON
+SrcSurface := ON
+CondFreeTIMG := ON
+CondFreeVLOW := ON
+
+# OMP=1: compile with the Intel OpenMP flag (-qopenmp) and keep these objects apart
+ifeq ($(OMP), 1)
+    TAG := ${CLUSTER}_${PREC}_omp
+else
+    TAG := ${CLUSTER}_${PREC}
+endif
+
+DFLAG_LIST := DEBUG STATIC GETARG VERBOSE CheckOverFlow \
+              MPITOPO1D USEOMP MPIBARRIER MPIBuffered DataTypeDouble \
+              USEPML WITHQS SrcSmooth SrcSurface \
+              CondFreeCharac CondFreeTIMG \
+              CondFreeVHOC CondFreeVEXT CondFreeVLOW
+# same rule as Makefile_gautschi: any non-empty value defines the flag
+DFLAGS := $(foreach flag,$(DFLAG_LIST),$(if $($(flag)),-D$(flag),)) $(DFLAGS)
+DFLAGS := $(strip $(DFLAGS))
+
+#######################################################################
+#  directories, modules                                               #
+#######################################################################
+skeldirs := OBJ_${TAG} bin_${TAG} src_${TAG}
+OBJDIR := ./OBJ_${TAG}
+BINDIR := ./bin_${TAG}
+SRCDIR := ./src_${TAG}
+FPPDIR := ./srcF
+FPPDIRKER := ./srcF.kernel
+
+SRC_MOD = mod_constants.f90 mod_math.f90 mod_string.f90 mod_nfseis.f90 \
+		  mod_para.f90 mod_mpi.f90  \
+		  mod_grid.f90 mod_io.f90 mod_media.f90 mod_macdrp.f90 mod_src.f90 \
+		  mod_custom.f90
+OBJ_MOD := $(foreach file,$(SRC_MOD),$(OBJDIR)/$(file:.f90=.o))
+
+# the new kernel code
+SRC_KER_FXYZ_FPP := SI_ker_sta_fxyz.F90
+SRC_KER_FXYZ     := SI_ker_sta_fxyz.f90
+EXE_KER_FXYZ     := SI_ker_sta_fxyz
+OBJ_KER_FXYZ     := $(OBJDIR)/$(SRC_KER_FXYZ:.f90=.o)
+SRC_KER_FXYZ_MPI := SI_ker_sta_fxyz_mpi.f90
+EXE_KER_FXYZ_MPI := SI_ker_sta_fxyz_mpi
+OBJ_KER_FXYZ_MPI := $(OBJDIR)/$(SRC_KER_FXYZ_MPI:.f90=.o)
+
+vpath %.F90 $(FPPDIR) $(FPPDIRKER)
+
+FPP := cpp
+FPPFLAGS := -P -traditional -I$(FPPDIR) -I$(FPPDIRKER) $(DFLAGS)
+
+#######################################################################
+#  compiler and options (from Makefile.opt.purdue_gautschi_intel)     #
+#######################################################################
+include Makefile.opt.$(WHEREAMI)
+
+ifeq ($(OMP), 1)
+    FFLAGS  += -qopenmp
+    LDFLAGS += -qopenmp
+endif
+
+#######################################################################
+#  targets                                                            #
+#######################################################################
+.PHONY: fxyz fxyz_serial fxyz_mpi skel sp dp both clean cleanboth
+
+# default: this precision (DP=1 or SP), serial + MPI executables
+fxyz: skel $(BINDIR)/$(EXE_KER_FXYZ) $(BINDIR)/$(EXE_KER_FXYZ_MPI)
+fxyz_serial: skel $(BINDIR)/$(EXE_KER_FXYZ)
+fxyz_mpi: skel $(BINDIR)/$(EXE_KER_FXYZ_MPI)
+
+skel:
+	@mkdir -p $(skeldirs)
+
+# both precisions, one after the other (each in its own OBJ/src/bin folders)
+sp:
+	$(MAKE) -f $(MKFILE) DP=0 SPTRUE=$(SPTRUE) OMP=$(OMP) fxyz
+dp:
+	$(MAKE) -f $(MKFILE) DP=1 OMP=$(OMP) fxyz
+both:
+	$(MAKE) -f $(MKFILE) sp
+	$(MAKE) -f $(MKFILE) dp
+
+$(BINDIR)/$(EXE_KER_FXYZ): $(OBJ_MOD) $(OBJ_KER_FXYZ)
+	$(FC) -o $@ $(OBJ_MOD) $(OBJ_KER_FXYZ) $(LDFLAGS)
+$(BINDIR)/$(EXE_KER_FXYZ_MPI): $(OBJ_MOD) $(OBJ_KER_FXYZ_MPI)
+	$(FC) -o $@ $(OBJ_MOD) $(OBJ_KER_FXYZ_MPI) $(LDFLAGS)
+
+RM := rm
+# removes the build folders of the chosen precision ONLY for the kernel's own
+# files, the shared module objects are rebuilt every time anyway (see below)
+clean:
+	$(RM) -f $(BINDIR)/$(EXE_KER_FXYZ) $(BINDIR)/$(EXE_KER_FXYZ_MPI)
+	$(RM) -f $(OBJDIR)/*.o $(OBJDIR)/*.mod
+	$(RM) -f $(SRCDIR)/*.f90
+cleanboth:
+	$(RM) -f bin_${CLUSTER}_SP/$(EXE_KER_FXYZ) bin_${CLUSTER}_SP/$(EXE_KER_FXYZ_MPI)
+	$(RM) -f bin_${CLUSTER}_DP/$(EXE_KER_FXYZ) bin_${CLUSTER}_DP/$(EXE_KER_FXYZ_MPI)
+	$(RM) -f bin_${CLUSTER}_SP_omp/$(EXE_KER_FXYZ) bin_${CLUSTER}_SP_omp/$(EXE_KER_FXYZ_MPI)
+	$(RM) -f bin_${CLUSTER}_DP_omp/$(EXE_KER_FXYZ) bin_${CLUSTER}_DP_omp/$(EXE_KER_FXYZ_MPI)
+	$(RM) -f bin_${CLUSTER}_SPtrue/$(EXE_KER_FXYZ) bin_${CLUSTER}_SPtrue/$(EXE_KER_FXYZ_MPI)
+	$(RM) -f OBJ_${CLUSTER}_SPtrue/*.o OBJ_${CLUSTER}_SPtrue/*.mod src_${CLUSTER}_SPtrue/*.f90
+	$(RM) -f OBJ_${CLUSTER}_SP/*.o OBJ_${CLUSTER}_SP/*.mod src_${CLUSTER}_SP/*.f90
+	$(RM) -f OBJ_${CLUSTER}_DP/*.o OBJ_${CLUSTER}_DP/*.mod src_${CLUSTER}_DP/*.f90
+	$(RM) -f OBJ_${CLUSTER}_SP_omp/*.o OBJ_${CLUSTER}_SP_omp/*.mod src_${CLUSTER}_SP_omp/*.f90
+	$(RM) -f OBJ_${CLUSTER}_DP_omp/*.o OBJ_${CLUSTER}_DP_omp/*.mod src_${CLUSTER}_DP_omp/*.f90
+
+#######################################################################
+#  suffix rules (same as Makefile_gautschi / Makefile.inc.kernel)     #
+#######################################################################
+.SUFFIXES:
+.SUFFIXES: .F90 .f90 .o
+
+# MPI version of the kernel: same source, -DKernelMPI
+$(SRC_KER_FXYZ_MPI): $(SRC_KER_FXYZ_FPP)
+	$(FPP) $(FPPFLAGS) -DKernelMPI $< > $(SRCDIR)/$(@F)
+
+# serial kernel and all modules
+%.f90 : %.F90
+	$(FPP) $(FPPFLAGS) $< > $(SRCDIR)/$(@F)
+
+# Note: as in the full build, the .f90 files are written to $(SRCDIR), not to the
+# current folder, so make regenerates and recompiles every module on each run.
+
+$(OBJDIR)/%.o : %.f90
+	$(FC) $(FFLAGS) $(SRCDIR)/$(<F) -o $@
+
+# vim:ft=make:ts=4:sw=4:nu:et:ai:
