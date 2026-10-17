@@ -1,1 +1,216 @@
-function plt_raypath(delayfile,stationfile,fband,ite_tag,ray_min)% plot paths coverage at certain period% close all; %clear all;% ite_tag = 'ite_0.05deg_01';% delayfile=[ite_nm,'_measure_result_craton_flat15.dat_latlon'];% PROJHOME = '/Users/xtyang/Work/Research/Projects/Craton';% stationfile = [PROJHOME '/STinfo/craton_station_withdata.txt'];[stationlon,stationlat]=textread(stationfile,'%*s %*s %f %f %*f\n');stationlon=stationlon-360;% pband=[7.5 15; 10 20; 15 30; 20 40; 30 60; 40 75; 60 100; 75 125];% fband=flip(flip(1./pband),2);%%% set plotting area [lon1 lon2] x [lat1 lat2]minlon=floor(min(stationlon)); maxlon=ceil(max(stationlon)); minlat=floor(min(stationlat));maxlat=ceil(max(stationlat));magextend=0.5; %extend the map area from the station coverage.lon1 = minlon+360; lon2 = maxlon+360;  lat1 = minlat;  lat2 = maxlat;maparea.lon=[minlon-magextend,maxlon+magextend];maparea.lat=[minlat-magextend, maxlat+magextend];imagearea=maparea;origgrid = .5;  % longitude grid intervallonpt = lon1:origgrid:lon2;   % data points lonlatpt = lat1:origgrid:lat2;   % data points lat % [gridLON,gridLAT] = meshgrid(lonpt, latpt);nlonpt=nan(length(lonpt)-1,1); nlatpt=nan(length(latpt)-1,1);for nn=1:length(lonpt)-1  nlonpt(nn) = (lonpt(nn)+lonpt(nn+1))/2;   % data points lonendfor nn=1:length(latpt)-1  nlatpt(nn) = (latpt(nn)+latpt(nn+1))/2;   % data points lonend[ngridLON,ngridLAT] = meshgrid(nlonpt, nlatpt);%load AlaskaBorder;load('us_states.mat');%[]; state(1).polygon(:,1)=Alaska.lon;state(1).polygon(:,2)=Alaska.lat;fidtemp=fopen(delayfile,'r');tempdelaydata=textscan(fidtemp,'%*s %*s %f %f %f %f %*f %*f %s');fclose(fidtemp);[slat,slon,rlat,rlon,fb] = tempdelaydata{1:5};clear tempdelaydata;figlabel={'a','b','c','d','e','f','g','h'};% raymask=zeros(length(nlatpt), length(nlonpt));figure('Position',[400 450 1300 650]);for k=1:size(fband,1)    ftag=['f' num2str(k)];    % clear maskgcp;    maskgcp=ones(length(nlatpt), length(nlonpt));    cc=zeros(length(nlatpt), length(nlonpt));        subplot(2,4,k), hold on, box on, axis on        set(gca,'ydir','normal');    daspect([1 cosd(mean([lat1 lat2])) 1]);        clear fm;    fm=strmatch(char(ftag),fb);        count = length(fm);        ss1lon=slon(fm);    ss1lat=slat(fm);    ss2lon=rlon(fm);    ss2lat=rlat(fm);        for idx=1:count        deltalon = ss2lon(idx)-ss1lon(idx);        deltalat = ss2lat(idx)-ss1lat(idx);            if deltalon>=0&&deltalat>=0, index=1;        elseif deltalon<0&&deltalat>0, index=2;        elseif deltalon<0&&deltalat<0, index=3;        elseif deltalon>0&&deltalat<0, index=4;        end                    nx=ceil(abs(deltalon)/origgrid);        ny=ceil(abs(deltalat)/origgrid);        slope = abs(deltalat/deltalon);    %     index        switch index        case 1            if nx>=ny            dx = ss1lon(idx)+origgrid*(0:nx);            dy = ss1lat(idx)+origgrid*(0:nx)*slope;            elseif nx<ny            dy = ss1lat(idx)+origgrid*(0:ny);            dx = ss1lon(idx)+origgrid*(0:ny)./slope;              end                        for pp=1:max(nx,ny)    %          ii=find(nlonpt>=dx(pp)-origgrid&nlonpt<=dx(pp)+origgrid);    %          jj=find(nlatpt>=dy(pp)-origgrid&nlatpt<=dy(pp)+origgrid);             ii = find( abs(nlonpt-dx(pp))==min(abs(nlonpt-dx(pp))) );             jj = find( abs(nlatpt-dy(pp))==min(abs(nlatpt-dy(pp))) );             cc(jj(1),ii(1))=cc(jj(1),ii(1))+1;            end                case 2            if nx>=ny            dx = ss1lon(idx)-origgrid*(0:nx);            dy = ss1lat(idx)+origgrid*(0:nx)*slope;            elseif nx<ny            dy = ss1lat(idx)+origgrid*(0:ny);            dx = ss1lon(idx)-origgrid*(0:ny)./slope;              end                        for pp=1:max(nx,ny)    %          ii=find(nlonpt>=dx(pp)-origgrid&nlonpt<=dx(pp)+origgrid);    %          jj=find(nlatpt>=dy(pp)-origgrid&nlatpt<=dy(pp)+origgrid);             ii = find( abs(nlonpt-dx(pp))==min(abs(nlonpt-dx(pp))) );             jj = find( abs(nlatpt-dy(pp))==min(abs(nlatpt-dy(pp))) );             cc(jj(1),ii(1))=cc(jj(1),ii(1))+1;            end                      case 3                  if nx>=ny            dx = ss1lon(idx)-origgrid*(0:nx);            dy = ss1lat(idx)-origgrid*(0:nx)*slope;            elseif nx<ny            dy = ss1lat(idx)-origgrid*(0:ny);            dx = ss1lon(idx)-origgrid*(0:ny)./slope;              end                        for pp=1:max(nx,ny)    %          ii=find(nlonpt>=dx(pp)-origgrid&nlonpt<=dx(pp)+origgrid);    %          jj=find(nlatpt>=dy(pp)-origgrid&nlatpt<=dy(pp)+origgrid);             ii = find( abs(nlonpt-dx(pp))==min(abs(nlonpt-dx(pp))) );             jj = find( abs(nlatpt-dy(pp))==min(abs(nlatpt-dy(pp))) );             cc(jj(1),ii(1))=cc(jj(1),ii(1))+1;            end                    case 4            if nx>=ny            dx = ss1lon(idx)+origgrid*(0:nx);            dy = ss1lat(idx)-origgrid*(0:nx)*slope;            elseif nx<ny            dy = ss1lat(idx)-origgrid*(0:ny);            dx = ss1lon(idx)+origgrid*(0:ny)./slope;              end                        for pp=1:max(nx,ny)    %          ii=find(nlonpt>=dx(pp)-origgrid&nlonpt<=dx(pp)+origgrid);    %          jj=find(nlatpt>=dy(pp)-origgrid&nlatpt<=dy(pp)+origgrid);             ii = find( abs(nlonpt-dx(pp))==min(abs(nlonpt-dx(pp))) );             jj = find( abs(nlatpt-dy(pp))==min(abs(nlatpt-dy(pp))) );             cc(jj(1),ii(1))=cc(jj(1),ii(1))+1;            end        end        end                    % max(max(cc))    % count    % if ite==1    %     cmin=10; cmax=100;cint=20;    % elseif ite==2    %     cmin=10; cmax=250;cint=50;    % elseif ite==3    %     cmin=10; cmax=400;cint=50;    % elseif ite==4    %     cmin=10; cmax=400;cint=50;    % elseif ite==5    %     cmin=10; cmax=400;cint=50;    % elseif ite==6    %     cmin=10; cmax=400;cint=50;    % elseif ite==7    %     cmin=10; cmax=200;cint=50;    % elseif ite==8    %     cmin=10; cmax=100;cint=10;    % end    cmin=ray_min;cmax=200;%cint=20;    % maskgcp=cc;    % maskgcp(cc>=5)=1;    maskgcp(cc<ray_min)=0;    % raymask=raymask+maskgcp;    clear raymask;    raymask=maskgcp;        % stores all areas with ray coverage.    clear maskpoints    raymask(raymask>=1)=1;    nn=1;    maskpoints=[];    for j=1:size(raymask,1)        for i=1:size(raymask,2)            if raymask(j,i) == 1                maskpoints(nn,1)=ngridLON(1,i)-360;                maskpoints(nn,2)=ngridLAT(j,1);                nn=nn+1;            end        end    end        %    clear kk raycover;    kk=boundary(maskpoints(:,1),maskpoints(:,2),1);    raycover.data(:,1)=maskpoints(kk,1);    raycover.data(:,2)=maskpoints(kk,2);    raycover.cutoff=ray_min;        hi=image(ngridLON(1,:)-360, ngridLAT(:,1), cc);    hi.CDataMapping='scaled';    hi.AlphaData=maskgcp;    set(gca,'CLim',[cmin cmax],'YDir','normal');        if 1        for sb=1:length(state)                plot(state(sb).polygon(:,1), state(sb).polygon(:,2),'color','k','LineWidth',.5);        end    end    colormap(flip(colormap('jet')))    hc=colorbar;    hc.Location='southoutside';    hc.Label.String=['count >= ' num2str(ray_min)];    set(hc,'TickDirection','out');        %plot stations.    % if ite==8    plot(stationlon,stationlat,'^','color',[.5 .5 .5],'markersize',4,'linewidth',0.5);    % end        % xlabel('Longitude','FontSize',13)      % ylabel('Latitude','FontSize',13)  %     plot([imagearea.lon(1) imagearea.lon(2) imagearea.lon(2) imagearea.lon(1) imagearea.lon(1)],...%         [imagearea.lat(1) imagearea.lat(1) imagearea.lat(2) imagearea.lat(2) imagearea.lat(1)],...%         'k-','linewidth',2); % image area%     text(mean(maparea.lon), maparea.lat(1)+1.5,[num2str(1/fband(k,2)) '-' num2str(1/fband(k,1)) ' s'],...%         'fontsize',14,'HorizontalAlignment','center');    axis([maparea.lon(1) maparea.lon(2) maparea.lat(1) maparea.lat(2)]);    daspect([1 cosd(mean(maparea.lat)) 1]);    set(gca,'XTick',maparea.lon(1):6:maparea.lon(2), 'YTick',maparea.lat(1):4:maparea.lat(2));    set(gca,'TickDir','out','Fontsize',14);    title([figlabel{k} '. ' num2str(1/fband(k,2)) '-' num2str(1/fband(k,1)) ' s'],'FontSize',14);        % plot(raycover.data(:,1),raycover.data(:,2),'m-','linewidth',2); hold off;        hold off;    drawnow        clear ss1lon ss2lon ss1lat ss2lat        %    save(['RayCoverOutline_', ite_tag,'_', num2str(1/fband(k,2)),'-',num2str(1/fband(k,1)),...        's_cutoff',num2str(ray_min),'.mat'],'raycover');end% cbarrow('right');set(gcf,'PaperPositionMode','auto');eval(['print -depsc -painters ' 'PathCoverageContour' num2str(ray_min) '.eps']);end
+function stats = plt_raypath(delayfile,stationfile,fband,ite_tag,ray_min,gridstep,cmax,opts)
+% PLT_RAYPATH  Plot ray-path coverage (rays per cell) for each period band.
+%
+%   stats = plt_raypath(delayfile,stationfile,fband,ite_tag,ray_min,gridstep)
+%   stats = plt_raypath(...,gridstep,cmax,opts)
+%
+% delayfile   : phase delay file (output of get_delay_latlon()).
+% stationfile : text file with station info (cols: name net lon lat elev).
+% fband       : frequency bands [f1min f1max; f2min f2max; ...]
+% ite_tag     : iteration tag (used in the figure title and outline file name).
+% ray_min     : minimum ray count for a cell to be drawn / counted as covered.
+% gridstep    : cell size in deg. Scalar = same size for lat and lon (square cells);
+%               [dlat dlon] = separate latitude and longitude cell sizes.
+% cmax        : (optional) maximum colorbar value. [] = auto (max over all bands).
+% opts        : (optional) struct, any of
+%                 .saveOutline  save boundary of the covered area (.mat)  (false)
+%                 .nrows        number of panel rows; columns follow      (2)
+%                 .margin       map margin around the stations, deg       (0.05)
+%                 .savefig      write the PNG                             (true)
+%                 .cmap         colormap, Nx3                             (parula)
+%
+% A ray is counted once in every cell it crosses.
+%
+% stats       : struct array, one element per band, with fields
+%               band, period, nrays, maxcount, ncells, status
+%               status = 'ok' | 'no data' | 'below ray_min'
+%
+% Bands with no rays, or with no cell reaching ray_min, are drawn as empty
+% panels with an explanatory label instead of failing.
+
+if nargin < 6 || ~isnumeric(gridstep) || ~any(numel(gridstep)==[1 2]) || any(~(gridstep>0))
+    error('plt_raypath:gridstep','gridstep (positive scalar, or [dlat dlon], in deg) is required.');
+end
+if nargin < 7, cmax = []; end
+if nargin < 8 || isempty(opts), opts = struct(); end
+if isempty(ite_tag), ite_tag = ''; end
+def = struct('saveOutline',false,'nrows',2,'margin',0.05,'savefig',true,'cmap',parula(256));
+fn = fieldnames(def);
+for i = 1:numel(fn)
+    if ~isfield(opts,fn{i}) || isempty(opts.(fn{i})), opts.(fn{i}) = def.(fn{i}); end
+end
+
+wrap180 = @(x) mod(x+180,360)-180;   % accept either 0-360 or -180-180 input
+
+%% ---- read inputs ---------------------------------------------------------
+fid = fopen(stationfile,'r');
+if fid < 0, error('plt_raypath:file','Cannot open station file: %s',stationfile); end
+C = textscan(fid,'%*s %*s %f %f %*f'); fclose(fid);
+stationlon = wrap180(C{1}); stationlat = C{2};
+
+fid = fopen(delayfile,'r');
+if fid < 0, error('plt_raypath:file','Cannot open delay file: %s',delayfile); end
+C = textscan(fid,'%*s %*s %f %f %f %f %*f %*f %s'); fclose(fid);
+[slat,slon,rlat,rlon,fb] = C{1:5};
+slon = wrap180(slon); rlon = wrap180(rlon);
+if isempty(slat)
+    warning('plt_raypath:empty','Delay file contains no measurements: %s',delayfile);
+end
+
+%% ---- map area and grid ---------------------------------------------------
+if isscalar(gridstep), dlat = gridstep; dlon = gridstep;   % same size in lat and lon
+else,                  dlat = gridstep(1); dlon = gridstep(2);
+end
+maparea.lon = [min(stationlon) max(stationlon)] + opts.margin*[-1 1];
+maparea.lat = [min(stationlat) max(stationlat)] + opts.margin*[-1 1];
+
+lonEdges = min(stationlon) : dlon : min(stationlon) + ceil((max(stationlon)-min(stationlon))/dlon)*dlon;
+latEdges = min(stationlat) : dlat : min(stationlat) + ceil((max(stationlat)-min(stationlat))/dlat)*dlat;
+nlon = numel(lonEdges)-1;  nlat = numel(latEdges)-1;
+if nlon < 1 || nlat < 1
+    error('plt_raypath:grid','gridstep (dlat=%g, dlon=%g) is too large for the station extent.',dlat,dlon);
+end
+lonc = lonEdges(1:end-1) + dlon/2;           % cell centres
+latc = latEdges(1:end-1) + dlat/2;
+
+state = [];
+if exist('us_states.mat','file')
+    S = load('us_states.mat');
+    if isfield(S,'Alaska')
+        state(1).polygon = [S.Alaska.lon(:) S.Alaska.lat(:)];
+    end
+else
+    warning('plt_raypath:nostates','us_states.mat not found; state outlines skipped.');
+end
+
+%% ---- pass 1: ray counts for every band ----------------------------------
+nb = size(fband,1);
+cc = cell(nb,1);
+stats = struct('band',num2cell((1:nb)'),'period',[],'nrays',0,'maxcount',0,'ncells',0,'status','');
+for k = 1:nb
+    stats(k).period = [1/fband(k,2) 1/fband(k,1)];
+    fm = find(strcmp(fb, ['f' num2str(k)]));
+    x1 = slon(fm); y1 = slat(fm); x2 = rlon(fm); y2 = rlat(fm);
+    good = isfinite(x1) & isfinite(y1) & isfinite(x2) & isfinite(y2);
+    x1 = x1(good); y1 = y1(good); x2 = x2(good); y2 = y2(good);
+    stats(k).nrays = numel(x1);
+
+    c = zeros(nlat,nlon);
+    for idx = 1:numel(x1)
+        dx = x2(idx)-x1(idx);  dy = y2(idx)-y1(idx);
+        n  = max(2, ceil(max(abs(dx)/(dlon/2), abs(dy)/(dlat/2))) + 1);   % >= 2 samples per cell
+        t  = linspace(0,1,n);
+        ix = floor((x1(idx)+t*dx - lonEdges(1))/dlon) + 1;
+        iy = floor((y1(idx)+t*dy - latEdges(1))/dlat) + 1;
+        ok = ix>=1 & ix<=nlon & iy>=1 & iy<=nlat;
+        lin = unique(sub2ind([nlat nlon], iy(ok), ix(ok)));   % once per cell
+        c(lin) = c(lin) + 1;
+    end
+    cc{k} = c;
+    stats(k).maxcount = max(c(:));
+    stats(k).ncells   = nnz(c >= ray_min);
+    if stats(k).nrays == 0
+        stats(k).status = 'no data';
+    elseif stats(k).ncells == 0
+        stats(k).status = 'below ray_min';
+    else
+        stats(k).status = 'ok';
+    end
+end
+
+if isempty(cmax), cmax = max([stats.maxcount]); end        % common scale across bands
+if cmax <= ray_min, cmax = ray_min + 1; end                % CLim must be increasing
+
+%% ---- pass 2: plotting ---------------------------------------------------
+nrows = max(1, min(round(opts.nrows), nb));  ncols = ceil(nb/nrows);   % rows first, columns follow
+fig = figure('Color','w','Position',[100 100 270*ncols+120 250*nrows+90]);
+tl  = tiledlayout(fig,nrows,ncols,'TileSpacing','compact','Padding','compact');
+if isempty(ite_tag), ttl = sprintf('Ray path coverage (%.3g\\circ x %.3g\\circ cells)',dlon,dlat);
+else,                ttl = sprintf('Ray path coverage, %s (%.3g\\circ x %.3g\\circ cells)',strrep(ite_tag,'_','\_'),dlon,dlat);
+end
+title(tl,ttl,'FontSize',14,'FontWeight','bold');
+xlabel(tl,'Longitude (\circ)','FontSize',12);
+ylabel(tl,'Latitude (\circ)','FontSize',12);
+
+axs = gobjects(nb,1);
+for k = 1:nb
+    ax = nexttile(tl); axs(k) = ax;
+    hold(ax,'on'); box(ax,'on');
+    c = cc{k};
+    has = strcmp(stats(k).status,'ok');
+
+    set(ax,'Color',[0.94 0.94 0.94],'Layer','top','TickDir','out','FontSize',11, ...
+        'YDir','normal','CLim',[ray_min cmax]);
+    colormap(ax,opts.cmap);
+
+    if has
+        hi = image(ax,lonc,latc,c,'CDataMapping','scaled');
+        hi.AlphaData = double(c >= ray_min);
+    end
+    for sb = 1:numel(state)
+        plot(ax,state(sb).polygon(:,1),state(sb).polygon(:,2),'Color',[.2 .2 .2],'LineWidth',.5);
+    end
+    plot(ax,stationlon,stationlat,'^','MarkerSize',4,'LineWidth',0.5, ...
+        'MarkerEdgeColor',[.25 .25 .25],'MarkerFaceColor',[.85 .85 .85]);
+
+    axis(ax,[maparea.lon maparea.lat]);
+    daspect(ax,[1 cosd(mean(maparea.lat)) 1]);
+    title(ax,sprintf('%c. %g-%g s  (%d rays)',char('a'+k-1),stats(k).period,stats(k).nrays), ...
+        'FontSize',14,'FontWeight','normal');
+    set(gca, 'TitleHorizontalAlignment','left');
+
+    % keep tick labels only on the outer edges of the tile grid
+    if k + ncols <= nb, ax.XTickLabel = []; end
+    if mod(k-1,ncols) ~= 0, ax.YTickLabel = []; end
+
+    if ~has   % label empty panels so a blank map is not mistaken for a plotting bug
+        if strcmp(stats(k).status,'no data')
+            msg = 'No data';
+        else
+            msg = sprintf('No cell with\n\\geq %g rays\n(max %d)',ray_min,stats(k).maxcount);
+        end
+        text(ax,mean(maparea.lon),mean(maparea.lat),msg,'HorizontalAlignment','center', ...
+            'FontSize',12,'Color',[.3 .3 .3],'BackgroundColor','w','EdgeColor',[.7 .7 .7],'Margin',4);
+    end
+
+    if has && opts.saveOutline
+        [jj,ii] = find(c >= ray_min);
+        if numel(ii) >= 3
+            try
+                pts = [lonc(ii(:))' latc(jj(:))'];
+                kk = boundary(pts(:,1),pts(:,2),1);
+                raycover.data = pts(kk,:); raycover.cutoff = ray_min; %#ok<STRNU>
+                save(sprintf('RayCoverOutline_%s_%g-%gs_cutoff%g.mat',ite_tag,stats(k).period,ray_min), ...
+                    'raycover');
+            catch ME
+                warning('plt_raypath:boundary','Outline failed for band %d: %s',k,ME.message);
+            end
+        end
+    end
+    hold(ax,'off');
+end
+
+% one shared colorbar (all panels use the same colour limits)
+cb = colorbar(axs(end),'eastoutside');
+cb.Layout.Tile = 'east';
+cb.Label.String = sprintf('Rays per cell (shown where \\geq %g)',ray_min);
+cb.TickDirection = 'out'; cb.FontSize = 11;
+drawnow
+
+%% ---- summary and output --------------------------------------------------
+fprintf('%-5s %-12s %8s %9s %8s  %s\n','band','period(s)','rays','maxcount','cells','status');
+for k = 1:nb
+    fprintf('%-5d %5g-%-6g %8d %9d %8d  %s\n',k,stats(k).period,stats(k).nrays, ...
+        stats(k).maxcount,stats(k).ncells,stats(k).status);
+end
+
+if opts.savefig
+    outfile = [delayfile '_pathcoverage' num2str(ray_min) '.png'];
+    if exist('exportgraphics','file')
+        exportgraphics(fig,outfile,'Resolution',300);
+    else
+        set(fig,'PaperPositionMode','auto');
+        print(fig,outfile,'-dpng','-painters');
+    end
+end
+end

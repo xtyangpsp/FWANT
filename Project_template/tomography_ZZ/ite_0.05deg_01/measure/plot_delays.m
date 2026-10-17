@@ -16,7 +16,8 @@ plt_data_dist_multiple({delayfile},fband,[2,4],maxdt,0.+maxdt,cutoffmethod)
 %%
 ray_min=20;
 cmax=100;
-plt_raypath(delayfile,stainfo,fband,ite_tag,ray_min,cmax)
+gridstep=[0.5, 0.5];
+plt_raypath(delayfile,stainfo,fband,ite_tag,ray_min,gridstep,cmax)
 
 
 %% create filter file for kernel calculation
