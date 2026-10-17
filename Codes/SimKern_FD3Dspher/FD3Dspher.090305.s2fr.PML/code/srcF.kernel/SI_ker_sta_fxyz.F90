@@ -17,6 +17,13 @@ program SI_ker_sta
 !     event strain is wx*[x-force run] + wy*[y-force run] (source-side
 !     rotation; run folders SGT_STAX / SGT_STAY under EVENT_ROOT/<source>).
 !     Without them the program behaves as before (ZZ, RL, ...).
+!     CONVENTION for TT pair lines: the three synthetic files listed after the
+!     pair line (fnm_synx/y/z = BHN/BHE/BHZ slots) must hold the receiver x, y,
+!     z velocity for a force along T_s ALREADY built from the two source runs
+!     (fT.Vx, fT.Vy of snap2sac_sphere_fxfy.m), in the code frame (x = south,
+!     y = east, z = up).  The program applies the receiver weights only; it does
+!     not apply (sin a, cos a) to the synthetic.  Exactly one number after
+!     rot_mat is rejected (give two or none).
 !  2) One convolution per output channel: the receiver rotation (rot_mat) is
 !     applied to the receiver strain BEFORE the convolution (the convolution is
 !     linear) instead of convolving x,y,z and rotating the results.  Station
@@ -129,7 +136,7 @@ real(SP),dimension(:,:,:,:),allocatable,target :: Ca,Cb
 real(SP),dimension(:,:,:,:),allocatable :: Etmp
 real(SP),dimension(:),allocatable,target :: Vch,Uch
 real(SP) :: wch(3),wsrc(2),rot_tmp(3,3)
-integer :: pk_tmp(6),ic,nend
+integer :: pk_tmp(6),ic,nend,ierr2
 logical :: need(3),flag_mix
 ! Cut the convolution at the last pick sample when all filters are causal
 ! (exact).  Set to .false. to reproduce the full-length original behaviour.
@@ -165,7 +172,7 @@ integer,dimension(:),allocatable :: kapid,kaqid,kbpid,kbqid
 #ifdef KernelMPI
 call MPI_INIT(ierr)
 #endif
-perf_start=wtime()
+perf_start=kc_wtime()
 
 call get_conf_name(fnm_conf)
 
@@ -421,6 +428,11 @@ evt_loop: do
   wsrc=0.0_SP
   read(rcdstr,*,iostat=ierr) pk_tmp, rot_tmp, wsrc
   flag_mix=(ierr==0)
+  if (.not. flag_mix) then
+     ! exactly one number after rot_mat is a typo, not a ZZ line: stop instead of silently running ZZ
+     read(rcdstr,*,iostat=ierr2) pk_tmp, rot_tmp, wsrc(1)
+     if (ierr2==0) call error_except('one source weight after rot_mat; give two (sin a, cos a) or none')
+  end if
   if (flag_mix .and. all(wsrc==0.0_SP)) call error_except('source weights are both zero')
   if (flag_mix) then
      if (abs(wsrc(1)**2+wsrc(2)**2-1.0_SP)>1.0e-3_SP) &
@@ -458,7 +470,7 @@ evt_loop: do
      !call error_except('dt /= stept*tinv')
   end if
 
-timer0=wtime()
+timer0=kc_wtime()
 ! ---- load station SGT: only the components that carry weight in this record.
 !      ZZ: z only.  TT (rotated pick on T): x and y only, z is never read.
 if ( flag_udx .and. (.not. flag_sgtx) ) then
@@ -502,7 +514,7 @@ else
         ExxS,EyyS,EzzS,ExyS,ExzS,EyzS,1.0_SP,.false.)
 end if
 call stress2strain(ExxS,EyyS,EzzS,ExyS,ExzS,EyzS,lambda,mu,bsubc)
-perf(1)=perf(1)+wtime()-timer0
+perf(1)=perf(1)+kc_wtime()-timer0
 
 ! ---- loop over output channels.  A channel is one unrotated component
 !      (ncmp=1..3) or one rotated component (ncmp=4..6, weights = column
@@ -623,10 +635,10 @@ end do
       nend=max(1,min(nend,knt))
    end if
 
-   timer0=wtime()
+   timer0=kc_wtime()
    call sgt2scatter_ch(wch,nend,kdt)
-   perf(2)=perf(2)+wtime()-timer0
-   timer0=wtime()
+   perf(2)=perf(2)+kc_wtime()-timer0
+   timer0=kc_wtime()
 ! cal kernel
 do npk=1,picknum(ncmp)
    nfq=pickfreq(npk)
@@ -684,7 +696,7 @@ do npk=1,picknum(ncmp)
    call nfseis_close(ncid(npk))
 end do ! npk
 
-perf(3)=perf(3)+wtime()-timer0
+perf(3)=perf(3)+kc_wtime()-timer0
 end do ! ncmp
 
 end do evt_loop
@@ -709,7 +721,7 @@ end if kernode_if
 !-----------------------------------------------------------------------------
 #ifdef VERBOSE
 write(*,'(a,3(i2.2),a,4(es12.4,1x))') 'KERNEL_PERF rank=',n_i,n_j,n_k, &
-  ' load conv filter+kernel+write total(s)=',perf,wtime()-perf_start
+  ' load conv filter+kernel+write total(s)=',perf,kc_wtime()-perf_start
 #endif
 call media_destroy
 call dealloc_all
@@ -1164,7 +1176,7 @@ end do
 end do
 end subroutine sgt2scatter
 
-function wtime() result(t)
+function kc_wtime() result(t)
 ! wall clock in seconds
 real(DP) :: t
 #ifndef KernelMPI
@@ -1176,7 +1188,7 @@ t=MPI_WTIME()
 call system_clock(cnt,rate)
 t=real(cnt,DP)/real(rate,DP)
 #endif
-end function wtime
+end function kc_wtime
 
 subroutine channel_weights(ic,w)
 ! Weights of the receiver components (x,y,z) that make up output channel ic:
