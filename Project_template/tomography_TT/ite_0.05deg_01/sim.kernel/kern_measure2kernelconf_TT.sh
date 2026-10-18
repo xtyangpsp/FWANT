@@ -25,12 +25,12 @@
 ############################################################
 
 ite=ite_0.025deg_01
-wkdir=/depot/xtyang/data/projects/xtyang/RioGrande/FWANT_ZZ/$ite    # CHANGE for the TT project
+wkdir=/depot/xtyang/data/projects/xtyang/RioGrande/FWANT_TT/$ite    # CHANGE for the TT project
 listdir=$wkdir/measure
 echo $listdir
 
 # raw delay measurement file
-listfile=$listdir/${ite}_measure_result_riogrande_snr6_drawcut.dat
+listfile=$listdir/${ite}_measure_result_riogrande.dat
 
 # azimuth files written by snap2sac_sphere_fxfy.m
 synthdir=$wkdir/syn.seismograms

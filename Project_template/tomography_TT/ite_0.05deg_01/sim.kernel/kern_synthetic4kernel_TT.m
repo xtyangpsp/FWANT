@@ -23,7 +23,7 @@ path([MFILEROOT '/fun-spool'],path);
 path([MFILEROOT '/saclab'],path);
 
 %|   set directories (CHANGE for the TT project) |%%%%%%%%%%%%%%%%%%%%%
-projdir = '/depot/xtyang/data/projects/xtyang/RioGrande/FWANT_ZZ/';
+projdir = '/depot/xtyang/data/projects/xtyang/RioGrande/FWANT_TT/';
 ite_num = 'ite_0.025deg_01';
 synthdir=strcat(projdir,ite_num, '/syn.seismograms');
 kerndir=strcat(projdir,ite_num, '/sim.kernel');
