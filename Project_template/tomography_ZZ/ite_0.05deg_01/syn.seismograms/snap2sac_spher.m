@@ -26,7 +26,7 @@ fclose(fid);
 nrecv=length(recv{1});
 ntwk=recv{1}; stnm=recv{2}; 
 slon=recv{3}; slat=recv{4};
-xrecv=nan(nrecv); yrecv=nan(nrecv);
+xrecv=nan(nrecv,1); yrecv=nan(nrecv,1);
 for n=1:nrecv
     xrecv(n)=(90-slat(n))/180*pi;
     yrecv(n)=slon(n)/180*pi;
