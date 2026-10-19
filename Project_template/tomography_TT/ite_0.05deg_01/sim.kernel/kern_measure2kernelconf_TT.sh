@@ -18,10 +18,10 @@
 ###    the source-side transverse force.  The current kernel code ignores them
 ###    (it stops reading after rot_mat); the patched code reads them.
 ###  * azimuths come from <syn.seismograms>/<statref>/<statref>.azimuth.txt,
-###    written by snap2sac_sphere_fxfy.m, so geometry and synthetics agree.
+###    written by snap2sac_sphere_TT.m, so geometry and synthetics agree.
 ###
 ### The synthetic files listed (BHN/BHE/BHZ slots) are the x,y,z responses
-### to the source-side transverse force (see kern_synthetic4kernel_fxfy.m).
+### to the source-side transverse force (see kern_synthetic4kernel_TT.m).
 ############################################################
 
 ite=ite_0.025deg_01
@@ -30,9 +30,9 @@ listdir=$wkdir/measure
 echo $listdir
 
 # raw delay measurement file
-listfile=$listdir/${ite}_measure_result_riogrande.dat
+listfile=$listdir/${ite}_TT_measure_result_riogrande_fast.dat
 
-# azimuth files written by snap2sac_sphere_fxfy.m
+# azimuth files written by snap2sac_sphere_TT.m
 synthdir=$wkdir/syn.seismograms
 
 # directory name used for the kernel (pick) output.  The ZZ workflow uses BHZ;

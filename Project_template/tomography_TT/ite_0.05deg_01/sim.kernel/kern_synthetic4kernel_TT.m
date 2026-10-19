@@ -12,10 +12,13 @@
 %%%     <statmes>/<statref>/BHZ/synthetic.vel.disp.dat   <- fT.Vz  (z = up)
 %%% The names BHN/BHE/BHZ are only the slot names used by
 %%% kern_measure2kernelconf; the content is the x,y,z response to a force
-%%% transverse to the path at the source (written by snap2sac_sphere_fxfy.m).
+%%% transverse to the path at the source (written by snap2sac_sphere_TT.m).
 %%% The kernel code rotates these to T at the receiver itself, with the
 %%% rot_mat given in the *_conf files.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+addpath(genpath('/depot/xtyang/data/codes/FWANT/Codes/MatlabFiles'))
+addpath(genpath('/depot/xtyang/data/codes/MatNoise/src'))
 
 %| set paths to use matlab routines |%%%%%%%%%%%%%%%%%%%%
 MFILEROOT='../../mfiles';
@@ -34,7 +37,7 @@ sacvel  = {'Vx','Vy','Vz'};           % x (south), y (east), z (up)
 kerncmp = {'BHN','BHE','BHZ'};        % slot directories, same order as in the conf file
 % The Z slot is only read by the ORIGINAL SI_ker_sta.F90 (it reads Z whenever it
 % uses rotated picks); the weight of Z in T is zero.  SI_ker_sta_fxyz.F90 never
-% reads it.  With allow_missing_Z = true a missing fT.Vz (snap2sac_sphere_fxfy.m
+% reads it.  With allow_missing_Z = true a missing fT.Vz (snap2sac_sphere_TT.m
 % run with save_Z = false) is replaced by zeros instead of failing.
 allow_missing_Z = true;
 

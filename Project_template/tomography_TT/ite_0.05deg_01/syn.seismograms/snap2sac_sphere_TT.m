@@ -1,4 +1,4 @@
-% snap2sac_sphere_fxfy: read the surface velocity snapshots of the fx and fy
+% snap2sac_sphere_TT: read the surface velocity snapshots of the fx and fy
 % runs of every virtual source in sim.station and write SAC seismograms at all
 % receivers (station pairs).  Modified from snap2sac_spher.m (fz run only).
 %
@@ -61,7 +61,7 @@ run_y = 'fy';            % run folder with the unit force toward +y (east)
 
 % Defaults = only what the Love (TT) imaging workflow needs:
 %   fT.UT         TT displacement      -> phase-delay measurement (synthetic)
-%   fT.Vx, fT.Vy  x,y velocity for T_s -> kernel step (kern_synthetic4kernel_fxfy.m)
+%   fT.Vx, fT.Vy  x,y velocity for T_s -> kernel step (kern_synthetic4kernel_TT.m)
 %   <src>.azimuth.txt                  -> kernel configuration (always written)
 do_rotate     = true;    % true: build TT/RR/transverse-force responses; false: save raw fx and fy only
 save_disp_TT  = true;    % TT (and RR) displacement SAC: fT.UT   [needed]
