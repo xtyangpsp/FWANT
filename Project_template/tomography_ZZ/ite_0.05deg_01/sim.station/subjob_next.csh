@@ -2,13 +2,13 @@
 ## Submit the jobs listed in work.lst (one run folder per line, e.g. NET.STA/fx).
 ## Works for any list made by skel2station_fxyz.sh (fx, fy, fz in any mix).
 ##
-## Usage: ./subjob_next_fxyz.csh [n] [queue]
+## Usage: ./subjob_next.csh [n] [queue]
 ##   n      optional number of jobs to submit; default (or 0 / all) = every job in the list
 ##   queue  optional, appended to the "#SBATCH -A" line of each submit script
 ## An all-digit argument is taken as n, any other argument as the queue.
-##   ./subjob_next_fxyz.csh              submit everything not yet submitted
-##   ./subjob_next_fxyz.csh 10           submit the next 10
-##   ./subjob_next_fxyz.csh 10 myqueue   next 10, with queue appended to the account line
+##   ./subjob_next.csh              submit everything not yet submitted
+##   ./subjob_next.csh 10           submit the next 10
+##   ./subjob_next.csh 10 myqueue   next 10, with queue appended to the account line
 ##
 ## A job is marked in the list by a leading "#!" ONLY after sbatch accepted it
 ## ("Submitted batch job <id>").  If sbatch fails the entry stays in the list and is
