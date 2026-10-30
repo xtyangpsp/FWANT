@@ -14,12 +14,27 @@ MFILEROOT='../mfiles';
 path([MFILEROOT '/fun-spool'],path);
 
 % current model iteration
-ite_nm = 'ite_0.05deg_07';
+ite_nm = 'ite_0.025deg_01';
 inv_homedir='inv.structure.kerVpVs';
 inv_workdir='FreqAll.Z.model';
-inv_modeldir='result.1th';
-sel_smooth=8;
-sel_damp=8;
+subsample=0; %0: single data set inversion. 1: subsample bootstrapping.
+if subsample
+	inv_modeldir='subsamples/model_statistics';
+	modelfile_namebase='model_mean'; %'model_mean' for subsample inversion results. 'try' for normal results.
+else
+	inv_modeldir='result.1th';
+	modelfile_namebase='try'; %'model_mean' for subsample inversion results. 'try' for normal results.
+end
+
+sel_smooth=8; % model
+sel_damp=10; %
+
+% minimum Vp and Vs allowed. model values below these will be reverted back to the input model.
+min_vp_cut = 4000; % in meters/second
+min_vs_cut = 2500; % in m/s
+maxdv = 0.1; %maximum allowed perturbation. 0.3=30% + or -.
+sigma = 10000; % Transition zone in meters (adjust based on grid spacing)
+apply_gaussian_weight = 0; %if 1, apply distance-based gaussian weight or smoothing using sigma
 
 % read previous model -----------------------------------
 fnm_conf=['./SeisFD3D.conf_' ite_nm];
@@ -90,7 +105,7 @@ clear XB YB ZB
 % read velocity perturbation model
 inv_modeldirfull=strcat('../',ite_nm,'/',inv_homedir,'/',inv_workdir,'/',inv_modeldir);
 
-fnm_try=strcat(inv_modeldirfull,'/','try.damp',num2str(sel_damp),'.smot',...
+fnm_try=strcat(inv_modeldirfull,'/',modelfile_namebase,'.damp',num2str(sel_damp),'.smot',...
     num2str(sel_smooth),'.st0.ev0.lo0.dat');
 
 M=load(fnm_try);
@@ -122,67 +137,70 @@ for k=1:mzplus
         end
     end
 end
-%clear xb yb zb rvp rvs
 
-% set up the functions for interpolation
-% Note: TriScatteredInterp is unavailable in matlab versions prior to 2009
-disp('construct interpolation function ...');
-xyzb=double(xyzb);vp=double(vp');vs=double(vs');
-FP=TriScatteredInterp(xyzb,vp);
-FS=TriScatteredInterp(xyzb,vs);
+% Note: TriScatteredInterp is replaced by scatteredInterpolant for stability
+disp('Constructing interpolation function...');
+xyzb=double(xyzb); vp=double(vp'); vs=double(vs');
 
-% interpolate vp and vs at simulation grids and replace resulting NaN with 0
-disp('interpolate velocities at simulation grids ...');
-itp_vp=FP(XYZ);
-itp_vp(isnan(itp_vp))=0;
-% itp_vpnan=isnan(itp_vp);
-% INDNaN=find(itp_vpnan==1);itp_vp(INDNaN)=0;
+% Use 'none' for extrapolation to identify points outside the inversion block
+FP = scatteredInterpolant(xyzb, vp, 'linear', 'none');
+FS = scatteredInterpolant(xyzb, vs, 'linear', 'none');
 
-itp_vs=FS(XYZ);
-itp_vs(isnan(itp_vs))=0;
-% itp_vsnan=isnan(itp_vs);
-% clear INDNaN; 
-% INDNaN=find(itp_vsnan==1);itp_vs(INDNaN)=0;
+itp_vp_raw = FP(XYZ);
+itp_vs_raw = FS(XYZ);
 
-% reshape the interpolated wave speed perturbations in to NX by NY by NZ matrix
-itp_vp=reshape(itp_vp,NX,NY,NZ);
-itp_vs=reshape(itp_vs,NX,NY,NZ);
+% 3. Initialize and Map perturbations
+itp_vp_3d = zeros(NX, NY, NZ);
+itp_vs_3d = zeros(NX, NY, NZ);
 
-% update the model, assuming a linear density-velocity relation (Christensen & Mooney, ?)
-outvp=mvp.*(1+itp_vp);
-outvs=mvs.*(1+itp_vs);
-drhdvp=0.297; % density in kg/m^3, wave speed in m/s)
-outrh=mrh.*(1+drhdvp*itp_vp);
+% Identify valid (non-NaN) indices
+valid_idx = ~isnan(itp_vp_raw) & ~isnan(itp_vs_raw);
+itp_vp_3d(valid_idx) = itp_vp_raw(valid_idx);
+itp_vs_3d(valid_idx) = itp_vs_raw(valid_idx);
 
-% find grids that are unlikely for earth materials
-indx=find(outvp.^2 <= 2.*outvs.^2); % lamda > 0 or Vp > ~1.4*Vs (for crust Vp =~1.7-1.8Vs)
-alpha=0.3;
-outvp(indx)=mvp(indx).*(1+alpha*itp_vp(indx));
-outvs(indx)=mvs(indx).*(1+alpha*itp_vs(indx));
-outrh(indx)=mrh(indx).*(1+drhdvp*itp_vp(indx));
+% 2. Calculate Gaussian Weighting Mask for boundary stability
+if apply_gaussian_weight
+	disp('Calculating Gaussian weighting mask...');
+% Find distance to nearest inversion point. 
+% If knnsearch is missing, use: dist = pdist2(xyzb, XYZ, 'euclidean', 'Smallest', 1);
+	[~, dist] = knnsearch(xyzb, XYZ, 'K', 1); 
+
+	weight = exp(-(dist.^2) / (2 * sigma^2));
+	weight(dist > 3*sigma) = 0; % Hard cut-off for far-field
+	weight_3d = reshape(weight, NX, NY, NZ);
+
+% 4. Apply Gaussian Weighting and Safety Clip
+% This ensures a smooth transition and no "cliff" edges
+	itp_vp = max(min(itp_vp_3d .* weight_3d, maxdv), -1.0*maxdv);
+	itp_vs = max(min(itp_vs_3d .* weight_3d, maxdv), -1.0*maxdv);
+else
+	%only apply safety clip
+	itp_vp = max(min(itp_vp_3d, maxdv), -1.0*maxdv);
+	itp_vs = max(min(itp_vs_3d, maxdv), -1.0*maxdv);
+end
+% 5. Update the model
+outvp = mvp .* (1 + itp_vp);
+outvs = mvs .* (1 + itp_vs);
+drhdvp = 0.297; 
+outrh = mrh .* (1 + drhdvp * itp_vp);
+
+% --- CRITICAL STABILITY TRAP ---
+% This will stop the script BEFORE it writes the bad files to Gautschi
+if any(outvp(:) <= 0) || any(outrh(:) <= 0) || any(isnan(outvp(:)))
+    fprintf('!!! STABILITY ERROR DETECTED !!!\n');
+    fprintf('Zero or NaN at i=%d, j=%d, k=%d\n', iv, jv, kv);
+    error('Aborting: The updated model contains values that will cause dt=0.');
+end
+
 clear indx
-indx=find(outvp.^2 <= 2.*outvs.^2); % if the criterion is still unsatisfied 
-outvp(indx)=mvp(indx);
-outvs(indx)=mvs(indx);
-outrh(indx)=mrh(indx);
-clear indx
-vpvs=2.2; % upper Vp/Vs limit
-indx=find(outvp > vpvs*outvs); 
-outvp(indx)=(outvp(indx)+vpvs*outvs(indx))/2;
-outvs(indx)=(outvp(indx)/vpvs+outvs(indx))/2;
-clear indx
-vpvs=1.5; % lower Vp/Vs limit
-indx=find(outvp < vpvs*outvs);
-outvp(indx)=(outvp(indx)+vpvs*outvs(indx))/2;
-outvs(indx)=(outvp(indx)/vpvs+outvs(indx))/2;
-clear indx
-% finally identify the water layer in the reference model and fix the velocity in the water layer
-indx = find(mvp <= 1500); % find water in the initial model
+% finally identify the water layer in the reference model and fix the velocity
+indx = find(mvp <= min_vp_cut); 
 outvp(indx)=mvp(indx);
 outvs(indx)=mvs(indx); 
 outrh(indx)=mrh(indx);
 clear indx
-indx = find(outvp < 1450); % no vp less than 1450 m/s in the output
+
+indx = find(outvs < min_vs_cut); 
 outvp(indx)=mvp(indx);
 outvs(indx)=mvs(indx);
 outrh(indx)=mrh(indx);
@@ -190,21 +208,30 @@ outrh(indx)=mrh(indx);
 % convert vp,vs to mu,la
 outmu=outrh.*outvs.^2;
 outla=outrh.*outvp.^2-outmu*2;
+
 % find grids with la < 0
 indxla=find(outla<0);
-outla(indxla)=0; %clear indxla
+outla(indxla)=0; 
 
 if 1
     disp('smoothening the model ...')
-    outrhtmp=smooth3(outrh(:,:,:),'box',[7 7 1]);
-    outmutmp=smooth3(outmu(:,:,:),'box',[7 7 1]);
-    outlatmp=smooth3(outla(:,:,:),'box',[7 7 1]);
+    outrhtmp=smooth3(outrh(:,:,:),'box', [7 7 1]);
+    outmutmp=smooth3(outmu(:,:,:),'box', [7 7 1]);
+    outlatmp=smooth3(outla(:,:,:),'box', [7 7 1]);
     outrh=outrhtmp; outmu=outmutmp; outla=outlatmp;
 end
 
 [outx, outy, outz]=size(outvp);
-ib=floor(outx/MPII);jb=floor(outy/MPIJ);kb=floor(outz/MPIK);
-%%
+ib=floor(outx/MPII); jb=floor(outy/MPIJ); kb=floor(outz/MPIK);
+
+% FINAL STABILITY CHECK
+fprintf('Min Vp: %f, Max Vp: %f\n', min(outvp(:)), max(outvp(:)));
+fprintf('Min Rho: %f, Max Rho: %f\n', min(outrh(:)), max(outrh(:)));
+
+if any(isnan(outla(:))) || any(isnan(outmu(:))) || any(isnan(outrh(:)))
+    error('NaN detected in output arrays! Check interpolation or density relation.');
+end
+
 if 1
 %------------------- create output nc file -----------------------
 disp('write the updated model ...')
@@ -212,19 +239,17 @@ for i=0:MPII-1
     for j=0:MPIJ-1
         for k=0:MPIK-1
             if i<10   
-                fnm_out=[dir_media_updated '/media_mpi0',num2str(i),'0',num2str(j),'0',num2str(k),'.nc']
+                fnm_out=[dir_media_updated '/media_mpi0',num2str(i),'0',num2str(j),'0',num2str(k),'.nc'];
             else
-                fnm_out=[dir_media_updated '/media_mpi',num2str(i),'0',num2str(j),'0',num2str(k),'.nc']
+                fnm_out=[dir_media_updated '/media_mpi',num2str(i),'0',num2str(j),'0',num2str(k),'.nc'];
             end
+            % Write to NetCDF
             nc_varput(fnm_out,'mu',permute(outmu(i*ib+1:(i+1)*ib,j*jb+1:(j+1)*jb,k*kb+1:(k+1)*kb),[3 2 1]),[3 3 3],[kb jb ib],[1 1 1]);
             nc_varput(fnm_out,'lambda',permute(outla(i*ib+1:(i+1)*ib,j*jb+1:(j+1)*jb,k*kb+1:(k+1)*kb),[3 2 1]),[3 3 3],[kb jb ib],[1 1 1]);
             nc_varput(fnm_out,'rho',permute(outrh(i*ib+1:(i+1)*ib,j*jb+1:(j+1)*jb,k*kb+1:(k+1)*kb),[3 2 1]),[3 3 3],[kb jb ib],[1 1 1]);
         end
     end
 end
-
 disp('finished updating the model media')
-
 end
-
 
