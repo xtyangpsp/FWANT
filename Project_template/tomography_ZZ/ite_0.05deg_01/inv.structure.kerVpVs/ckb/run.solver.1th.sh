@@ -1,22 +1,28 @@
 #!/bin/bash
 if [ $# -lt 3 ]
 	then
-		echo './run.solver.1th.sh xwd ywd zwd'
+		echo './run.solver.1th.sh xwd ywd zwd [dv]'
 		exit 1
+fi
+if [ $# -eq 4 ]
+then
+        dvmax=$4
+else
+        dvmax=0.1 #default 0.1
 fi
 xwd=$1
 ywd=$2
 zwd=$3
 
-outdir='result.1th.'${xwd}'x'${ywd}'x'${zwd}
+outdir='result.1th.'${xwd}'x'${ywd}'x'${zwd}'dv'${dvmax}
 
-fnm_smooth='../block.69x159x52.1x1x1.1x1x1.smooth1th.dat'
+fnm_smooth='../block.67x50x49.1x1x1.1x1x1.smooth1th.dat'
 
 # input list file name
-list_Gd='inv_Gd_list_'${xwd}'x'${ywd}'x'${zwd}'.ori'
+list_Gd='inv_Gd_list_'${xwd}'x'${ywd}'x'${zwd}'dv'${dvmax}'.ori'
 
-damp_list="2"
-smot_list="2"
+damp_list="2 4 6 8 10"
+smot_list=${damp_list}
 
 weigst_list="0"
 weigev_list="0"
@@ -33,24 +39,16 @@ nlo=3
 num_cmp=2
 
 # see ./sim.kernel/run.kernel.assm.sh for ker_thres
-ker_thres="5e-3"
+ker_thres="0"
 
 # absolute phase delay less than
-data_thres=7.5
+data_thres=10
 
-SOLVER='../../../codes/inv.LSQR/solver_damp_smo_loc_yang'
+SOLVER='../Codes/InvCkb/inv.LSQR/solver'
 
 if [ ! -d $outdir ]; then
    mkdir -p $outdir
 fi
-
-# ----------------------------------------------------------------------
-function inv_compile {
-  FC=ifort
-  SRC='/home/haiying/Proj/cascadia/codes/inv.LSQR'
-  echo "$FC -O3 -o $SOLVER $SRC/mod_LSQR.f90 $SRC/solver_damp_smooth.f90"
-  $FC -O3 -o $SOLVER $SRC/mod_LSQR.f90 $SRC/solver_damp_smooth.f90
-}
 
 # ----------------------------------------------------------------------
 function inv_loop {

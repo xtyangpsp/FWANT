@@ -1,8 +1,14 @@
 #!/bin/bash
 if [ $# -lt 6 ]
 	then
-		echo './inv.ckb.make.sh xc yc zc xwd ywd zwd'
+		echo './inv.ckb.make.sh xc yc zc xwd ywd zwd [dv]'
 		exit 1
+fi
+if [ $# -eq 7 ]
+then
+	dvmax=$7
+else
+	dvmax=0.1 #default 0.1
 fi
 xc=$1
 yc=$2
@@ -11,10 +17,10 @@ xwd=$4
 ywd=$5
 zwd=$6
 
-bin_make_ckb='../../../codes/inv.ckb/inv_make_ckb'
+bin_make_ckb='../Codes/InvCkb/inv.ckb/inv_make_ckb'
 
 # dimensions of the inversion blocks
-mx=69; my=159; mz=52;
+mx=67; my=50; mz=49;
 echo $mx $my $mz
 # checkerboard pattern
 # 1 = linear square
@@ -30,7 +36,7 @@ nx1=1; ny1=1; nz1=1
 nx2=$mx; ny2=$my; nz2=$mz
 
 # maximum perturbation
-dvmax=0.10
+#dvmax=0.10
 
 # Checkerboard with 5x5 inversion cells in lat and lon and 1-cell edge
 mxc=${xc}; wid1=${xwd}; edgex1=0; edgex2=0; dvmin1=$dvmax
@@ -49,4 +55,4 @@ $nx1 $ny1 $nz1
 $nx2 $ny2 $nz2
 EOF
 
-cp block_ckb.dat 'block_ckb_'${xwd}'x'${ywd}'x'${zwd}'.dat'
+cp block_ckb.dat 'block_ckb_'${xwd}'x'${ywd}'x'${zwd}'dv'${dvmax}'.dat'
